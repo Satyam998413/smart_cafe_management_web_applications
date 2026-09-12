@@ -2,3 +2,4 @@
 // so a leaked test token can't be verified against production. Mirrors
 // server/jest.setup.js.
 process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.SUPABASE_JWT_SECRET = 'test-supabase-jwt-secret';

@@ -37,6 +37,15 @@ describe('GET /api/menu/[id]', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('scopes to the caller\'s org when an authenticated request carries one', async () => {
+    const builder = createMockQueryBuilder({ data: { id: 'item-1', optionGroups: [] }, error: null });
+    supabase.from.mockReturnValue(builder);
+
+    await GET(new NextRequest(URL, { headers: authHeader({ orgId: 'org-1' }) }), { params });
+
+    expect(builder.eq).toHaveBeenCalledWith('org_id', 'org-1');
+  });
 });
 
 describe('PATCH /api/menu/[id]', () => {

@@ -3,17 +3,20 @@ import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { serializeMenuItem } from '@/lib/serializers.js';
 import { scopeToOrg } from '@/lib/tenantScope.js';
-import { requireAuth, requireRole } from '@/lib/auth.js';
+import { requireAuth, requireRole, optionalAuth } from '@/lib/auth.js';
 import { MENU_ITEM_SELECT, sortMenuItemOptions } from '@/lib/menuHelpers.js';
 
 // GET /api/menu/[id] — ported from menuController.js's getMenuItemById.
-// Public, same as menuRoutes.js's `router.get('/:id', ...)`.
+// Scoped by the caller's orgId when a JWT is present (see /api/menu's GET
+// for why); still public/no-401 for the anonymous case, matching
+// menuRoutes.js's `router.get('/:id', ...)`.
 export async function GET(request, { params }) {
   try {
+    const auth = optionalAuth(request);
     const { id } = await params;
     const { data, error } = await scopeToOrg(
       supabase.from('menu_items').select(MENU_ITEM_SELECT).eq('id', id),
-      null
+      auth.orgId
     ).maybeSingle();
     if (error) throw error;
     if (!data) {

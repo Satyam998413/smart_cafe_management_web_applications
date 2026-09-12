@@ -51,11 +51,16 @@ describe('GET /api/menu', () => {
     expect(builder.eq).toHaveBeenCalledWith('category', 'beverage');
   });
 
-  // Known gap ported unchanged from menuRoutes.js: no auth is attached to
-  // this route, so org scoping is always a no-op here today (see
-  // server/src/routes/menuRoutes.js's `router.get('/', ...)` — never wired
-  // through authenticateToken either).
-  it('never applies an org_id filter (route has no auth attached)', async () => {
+  it('scopes to the caller\'s org when an authenticated request carries one', async () => {
+    const builder = createMockQueryBuilder({ data: [], error: null });
+    supabase.from.mockReturnValue(builder);
+
+    await GET(new NextRequest(URL, { headers: authHeader({ orgId: 'org-1' }) }));
+
+    expect(builder.eq).toHaveBeenCalledWith('org_id', 'org-1');
+  });
+
+  it('stays unscoped for an anonymous request (no public menu page consumes this yet)', async () => {
     const builder = createMockQueryBuilder({ data: [], error: null });
     supabase.from.mockReturnValue(builder);
 

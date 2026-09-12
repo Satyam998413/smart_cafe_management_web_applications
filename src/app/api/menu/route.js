@@ -3,19 +3,22 @@ import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { serializeMenuItem } from '@/lib/serializers.js';
 import { scopeToOrg } from '@/lib/tenantScope.js';
-import { requireAuth, requireRole } from '@/lib/auth.js';
+import { requireAuth, requireRole, optionalAuth } from '@/lib/auth.js';
 import { MENU_ITEM_SELECT, sortMenuItemOptions } from '@/lib/menuHelpers.js';
 
 // GET /api/menu — ported from server/src/controllers/menuController.js's
-// getMenuItems. Public (no auth) — matches menuRoutes.js's `router.get('/',
-// menuController.getMenuItems)`, which never attaches req.orgId either, so
-// org scoping is a no-op here today just like on the Express side.
+// getMenuItems, but no longer a tenant-blind no-op: every caller in this app
+// (staff dashboard, customer app) already sends a JWT with an orgId claim by
+// the time they browse the menu, so scope by it when present. Stays public
+// (no 401) for the no-token case since there's no anonymous public menu page
+// yet — that will need an explicit orgId/spaceId resolver once one exists.
 export async function GET(request) {
   try {
+    const auth = optionalAuth(request);
     const category = request.nextUrl.searchParams.get('category');
     let query = scopeToOrg(
       supabase.from('menu_items').select(MENU_ITEM_SELECT).order('created_at', { ascending: false }),
-      null
+      auth.orgId
     );
     if (category) query = query.eq('category', category);
 
