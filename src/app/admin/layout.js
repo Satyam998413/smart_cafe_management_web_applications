@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Building2, LogOut, ShieldCheck } from 'lucide-react';
+import { Activity, Building2, Coins, LogOut, Megaphone, ShieldCheck, Ticket } from 'lucide-react';
 import { createAdminApiFetch } from '@/lib/adminApiClient';
 import { AdminContext } from '@/features/admin/AdminContext';
 import AdminLoginPage from '@/features/admin/AdminLoginPage';
 
-const NAV_ITEMS = [{ href: '/admin/organizations', label: 'Organizations', icon: Building2 }];
+const NAV_ITEMS = [
+  { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/admin/coin-plans', label: 'Coin Plans', icon: Coins },
+  { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
+  { href: '/admin/offers', label: 'Offers', icon: Megaphone },
+  { href: '/admin/activity', label: 'Activity', icon: Activity }
+];
 
 // Root of the Master Admin console (plan Phase 1a) — a separate,
 // route-based section from the tab-switching customer/staff dashboard
@@ -27,6 +33,7 @@ export default function AdminLayout({ children }) {
     const storedToken = localStorage.getItem('admin_token') || '';
     const storedRole = localStorage.getItem('admin_role') || '';
     if (storedToken && storedRole === 'master_admin') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToken(storedToken);
       setUser({ name: localStorage.getItem('admin_name') || '', id: localStorage.getItem('admin_user_id') || '' });
     } else {

@@ -25,6 +25,10 @@ export const serializeUser = (user) => {
     hiveId: user.hive_id,
     role: user.role || 'customer',
     authProvider: user.auth_provider || 'password',
+    // Staff's site/space assignment (plan Phase 2c) — not sensitive, and the
+    // Staff page needs it to show/edit who's assigned where without a
+    // second round-trip per row.
+    spaceId: user.space_id ?? null,
     preferences: { orderCount: user.order_count ?? 0 },
     createdAt: user.created_at
   };
@@ -245,6 +249,69 @@ export const serializeCoinPurchase = (purchase) => {
     razorpayPaymentId: purchase.razorpay_payment_id,
     status: purchase.status,
     createdAt: purchase.created_at
+  };
+};
+
+export const serializeCoinPlan = (plan) => {
+  if (!plan) return null;
+  return {
+    id: plan.id,
+    name: plan.name,
+    priceInr: toNumber(plan.price_inr),
+    coinsGranted: plan.coins_granted,
+    bonusCoins: plan.bonus_coins,
+    isActive: plan.is_active,
+    sortOrder: plan.sort_order,
+    createdAt: plan.created_at
+  };
+};
+
+export const serializeCoupon = (coupon) => {
+  if (!coupon) return null;
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    scope: coupon.scope,
+    discountType: coupon.discount_type,
+    discountValue: toNumber(coupon.discount_value),
+    maxUsesTotal: coupon.max_uses_total,
+    maxUsesPerOrg: coupon.max_uses_per_org,
+    validFrom: coupon.valid_from,
+    validUntil: coupon.valid_until,
+    isActive: coupon.is_active,
+    createdBy: coupon.created_by,
+    createdAt: coupon.created_at
+  };
+};
+
+export const serializeOffer = (offer) => {
+  if (!offer) return null;
+  return {
+    id: offer.id,
+    name: offer.name,
+    description: offer.description,
+    bonusType: offer.bonus_type,
+    bonusValue: toNumber(offer.bonus_value),
+    appliesTo: offer.applies_to,
+    startsAt: offer.starts_at,
+    endsAt: offer.ends_at,
+    isActive: offer.is_active,
+    createdAt: offer.created_at
+  };
+};
+
+export const serializeAuditLogEntry = (entry) => {
+  if (!entry) return null;
+  return {
+    id: entry.id,
+    orgId: entry.org_id,
+    actorId: entry.actor_id,
+    actorRole: entry.actor_role,
+    action: entry.action,
+    targetType: entry.target_type,
+    targetId: entry.target_id,
+    metadata: entry.metadata,
+    createdAt: entry.created_at
   };
 };
 

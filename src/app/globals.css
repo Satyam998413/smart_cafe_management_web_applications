@@ -595,6 +595,46 @@ body {
   color: #047857;
 }
 
+.role-badge.role-owner {
+  background: rgba(217, 119, 6, 0.14);
+  color: var(--accent-secondary);
+}
+
+.role-badge.role-waiter {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+/* Layout Builder — space-kind badge (Sites/Layout Builder pages). Same
+   pill shape as .role-badge, its own color set since a "kind" (floor,
+   table, room…) isn't a staff role. */
+.kind-badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.kind-badge.kind-floor,
+.kind-badge.kind-hall {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.kind-badge.kind-table,
+.kind-badge.kind-canteen {
+  background: var(--accent-wash);
+  color: var(--accent-secondary);
+}
+
+.kind-badge.kind-room {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
 .logout-menu-btn:hover {
   background: rgba(220, 38, 38, 0.08) !important;
 }
@@ -1038,4 +1078,152 @@ body {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+/* --- Billing / IoT / Delivery / Wallet surfaces ------------------------ */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Visible keyboard focus ring — the custom controls below (rating picker,
+   device switches) have no browser-default focus style of their own since
+   they're plain <button>s styled from scratch, unlike .field-input which
+   already gets one via :focus. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role='radio']:focus-visible,
+[role='switch']:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Post-payment food/service rating (1-5 emoji picker) */
+.rating-picker {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rating-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-elevated);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.rating-option:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.rating-option.selected {
+  border-color: var(--accent-primary);
+  background: var(--accent-wash);
+  box-shadow: var(--shadow-accent);
+  transform: translateY(-1px);
+}
+
+/* Generic status pill (bill / coin-purchase / delivery status) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* On/off capability switch (IoT device controls) — never flips itself on
+   click; the parent only renders it "on" once device_states confirms, per
+   the "don't assume success" rule these controls follow. */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 46px;
+  height: 26px;
+  min-width: 46px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-elevated);
+  cursor: pointer;
+  padding: 2px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.switch.on {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-color: transparent;
+}
+
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.switch-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease;
+}
+
+.switch.on .switch-knob {
+  transform: translateX(20px);
+}
+
+/* Device / rider / zone list rows — visually related to .staff-row */
+.entity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.entity-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--accent-wash);
+  color: var(--accent-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capability-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.capability-row:first-of-type {
+  border-top: none;
 }

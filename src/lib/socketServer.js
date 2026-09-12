@@ -46,6 +46,11 @@ export function initOrderSocket(io) {
     if (socket.userId) socket.join(`user-${socket.userId}`);
     if (socket.userRole === 'manager') socket.join('role-manager');
     if (socket.userRole === 'cook') socket.join('role-cook');
+    // Without this, billingHelpers.js/pay-cash/collect-cash's emits to
+    // 'role-owner' (bill_update) had no listener ever joined to that room —
+    // an Owner session never received them. Found while wiring up the
+    // Owner-visible Pending Cash Bills tab, which depends on this event.
+    if (socket.userRole === 'owner') socket.join('role-owner');
 
     // customerId is the chat thread's identity (one persistent thread per
     // customer, not per order).

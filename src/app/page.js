@@ -11,10 +11,17 @@ import LoginPage from '@/features/auth/LoginPage';
 import OrdersPage from '@/features/orders/OrdersPage';
 import MenuPage from '@/features/menu/MenuPage';
 import StaffPage from '@/features/staff/StaffPage';
+import SitesPage from '@/features/sites/SitesPage';
+import LayoutBuilderPage from '@/features/layout-builder/LayoutBuilderPage';
 import ChatsPage from '@/features/chats/ChatsPage';
 import TeamChatPage from '@/features/chats/TeamChatPage';
 import SmartAiPage from '@/features/ai/SmartAiPage';
 import CartPage from '@/features/cart/CartPage';
+import BillingCheckoutPage from '@/features/billing/BillingCheckoutPage';
+import PendingCashBillsPage from '@/features/billing/PendingCashBillsPage';
+import IotDevicesPage from '@/features/iot/IotDevicesPage';
+import DeliveryPage from '@/features/delivery/DeliveryPage';
+import WalletPage from '@/features/wallet/WalletPage';
 
 // Ported from react_app/src/App.jsx — the dashboard shell that owns every
 // piece of cross-page state (auth, cart, orders, menu, the one shared
@@ -49,6 +56,12 @@ export default function Home() {
   const [menuLoading, setMenuLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
+
+  // Which site the Layout Builder tab opens to — set when SitesPage's
+  // "Layout" button hands a site off (plan Phase 2a); the Layout Builder
+  // tab itself still works standalone (defaults to the org's first site)
+  // when reached directly from the nav instead.
+  const [layoutSiteId, setLayoutSiteId] = useState(null);
 
   // One shared cart for the whole customer experience — Menu, Smart Waiter,
   // and AI Chat all read/write the same cart, exactly like flutter_app's
@@ -313,6 +326,15 @@ export default function Home() {
     }
   };
 
+  // Shared sink for anything that PATCHes an order and gets a fresh one
+  // back — used by DeliveryPage's rider/status controls, same merge
+  // pattern as handleStatusChange/handleClaimOrder above so the Orders tab
+  // stays in sync without a second fetch.
+  const handleOrderUpdated = (updatedOrder) => {
+    if (!updatedOrder) return;
+    setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+  };
+
   if (!authToken) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
@@ -359,7 +381,40 @@ export default function Home() {
               <CartPage cartApi={cartApi} onDone={() => setActiveTab('orders')} onBack={() => setActiveTab('menu')} />
             )}
 
-            {activeTab === 'staff' && authRole === 'manager' && <StaffPage apiFetch={apiFetch} />}
+            {activeTab === 'sites' && (authRole === 'owner' || authRole === 'manager') && (
+              <SitesPage
+                apiFetch={apiFetch}
+                authRole={authRole}
+                onOpenLayout={(site) => {
+                  setLayoutSiteId(site.id);
+                  setActiveTab('layout');
+                }}
+              />
+            )}
+
+            {activeTab === 'layout' && (authRole === 'owner' || authRole === 'manager') && (
+              <LayoutBuilderPage apiFetch={apiFetch} authRole={authRole} initialSiteId={layoutSiteId} />
+            )}
+
+            {activeTab === 'staff' && (authRole === 'owner' || authRole === 'manager') && <StaffPage apiFetch={apiFetch} authRole={authRole} />}
+
+            {activeTab === 'billing' && authRole === 'customer' && (
+              <BillingCheckoutPage apiFetch={apiFetch} socket={socket} authName={authName} />
+            )}
+
+            {activeTab === 'cash-bills' && (authRole === 'owner' || authRole === 'manager') && (
+              <PendingCashBillsPage apiFetch={apiFetch} socket={socket} />
+            )}
+
+            {activeTab === 'devices' && (authRole === 'owner' || authRole === 'manager') && <IotDevicesPage apiFetch={apiFetch} />}
+
+            {activeTab === 'delivery' && (authRole === 'owner' || authRole === 'manager') && (
+              <DeliveryPage apiFetch={apiFetch} orders={orders} onOrderUpdated={handleOrderUpdated} />
+            )}
+
+            {activeTab === 'wallet' && (authRole === 'owner' || authRole === 'manager') && (
+              <WalletPage apiFetch={apiFetch} authRole={authRole} authName={authName} />
+            )}
 
             {activeTab === 'chats' && <ChatsPage apiFetch={apiFetch} authRole={authRole} myId={myId} socket={socket} />}
 

@@ -12,7 +12,10 @@ const TABS = [
   { path: '', label: 'Overview' },
   { path: '/domain', label: 'Domain' },
   { path: '/ai', label: 'AI Credentials' },
-  { path: '/data-plane', label: 'Data Plane' }
+  { path: '/data-plane', label: 'Data Plane' },
+  { path: '/wallet', label: 'Wallet' },
+  { path: '/history', label: 'Plan History' },
+  { path: '/security-log', label: 'Security Log' }
 ];
 
 // Fetches the org once (plan Phase 1a's tenant detail routes) and shares it
@@ -48,6 +51,7 @@ export default function OrgDetailLayout({ children }) {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
