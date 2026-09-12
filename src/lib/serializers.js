@@ -232,6 +232,22 @@ export const serializeWallet = (wallet, transactions = []) => {
   };
 };
 
+export const serializeCoinPurchase = (purchase) => {
+  if (!purchase) return null;
+  return {
+    id: purchase.id,
+    orgId: purchase.org_id,
+    coinPlanId: purchase.coin_plan_id,
+    pricePaid: toNumber(purchase.price_paid),
+    coinsCredited: purchase.coins_credited,
+    couponCodeId: purchase.coupon_code_id,
+    razorpayOrderId: purchase.razorpay_order_id,
+    razorpayPaymentId: purchase.razorpay_payment_id,
+    status: purchase.status,
+    createdAt: purchase.created_at
+  };
+};
+
 export const serializeOrganization = (org) => {
   if (!org) return null;
   return {

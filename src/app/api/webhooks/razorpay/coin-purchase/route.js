@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { isValidWebhookSignature } from '@/lib/razorpayClient.js';
+import { markCoinPurchasePaid } from '@/lib/walletService.js';
 
 // POST /api/webhooks/razorpay/coin-purchase — ported from
 // walletController.js's coinPurchaseWebhook. One static URL configured in
@@ -37,7 +38,7 @@ export async function POST(request) {
 
     const { data: purchase, error: fetchError } = await supabase
       .from('coin_purchases')
-      .select('*')
+      .select('id')
       .eq('razorpay_order_id', payment.order_id)
       .eq('status', 'pending')
       .maybeSingle();
@@ -48,33 +49,9 @@ export async function POST(request) {
       return NextResponse.json({ message: 'No matching pending purchase' });
     }
 
-    const { error: creditError } = await supabase.rpc('increment_wallet_balance', {
-      p_org_id: purchase.org_id,
-      p_amount: purchase.coins_credited,
-      p_type: 'recharge_credit',
-      p_reference_type: 'coin_purchase',
-      p_reference_id: purchase.id
-    });
-    if (creditError) throw creditError;
-
-    const { error: updateError } = await supabase
-      .from('coin_purchases')
-      .update({ status: 'paid', razorpay_payment_id: payment.id })
-      .eq('id', purchase.id);
-    if (updateError) throw updateError;
-
-    if (purchase.coupon_code_id) {
-      const { error: redeemError } = await supabase.from('coupon_redemptions').insert({
-        coupon_code_id: purchase.coupon_code_id,
-        org_id: purchase.org_id,
-        coin_purchase_id: purchase.id
-      });
-      // 23505 = unique_violation: a concurrent purchase already redeemed
-      // this coupon for this org first. The payment already happened and
-      // can't be undone over a promo code, so this is logged, not fatal —
-      // see coin-purchases/route.js's comment on the same accepted race.
-      if (redeemError && redeemError.code !== '23505') throw redeemError;
-    }
+    // Shared with the GET /api/wallet/coin-purchases/[id] reconciliation
+    // path — see markCoinPurchasePaid's own doc comment.
+    await markCoinPurchasePaid({ purchaseId: purchase.id, paymentId: payment.id });
 
     return NextResponse.json({ message: 'Wallet credited' });
   } catch (error) {
