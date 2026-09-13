@@ -3,7 +3,7 @@ import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { scopeToOrg } from '@/lib/tenantScope.js';
 import { requireAuth, requireRole } from '@/lib/auth.js';
-import { resolveAdapter } from '@/lib/iot/adapterResolver.js';
+import { sendDeviceCommand } from '@/lib/iot/deviceCommands.js';
 
 // POST /api/iot-devices/[id]/commands — ported from iotDeviceController.js's
 // sendDeviceCommand. Owner always allowed; Manager only with
@@ -45,36 +45,12 @@ export async function POST(request, { params }) {
 
     // device_commands row IS the audit trail (gaps doc §6) — inserted
     // before the adapter call so a command is recorded even if the adapter
-    // call itself throws, not just on success.
-    const { data: command, error: commandError } = await supabase
-      .from('device_commands')
-      .insert({ device_id: id, capability, value, issued_by: auth.userId, status: 'pending' })
-      .select('*')
-      .single();
-    if (commandError) throw commandError;
+    // call itself throws, not just on success. See sendDeviceCommand for
+    // the pending->adapter->status->state-sync sequence, shared with the
+    // master-switch bulk route.
+    const { commandId, status } = await sendDeviceCommand(device, capability, value, auth.userId);
 
-    let finalStatus = 'sent';
-    try {
-      const result = await resolveAdapter(device.vendor).sendCommand(device, capability, value);
-      finalStatus = result?.status === 'acked' ? 'acked' : 'sent';
-    } catch (adapterError) {
-      finalStatus = 'failed';
-      logger.error('IoT adapter command failed', { deviceId: id, error: adapterError.message });
-    }
-
-    const { error: statusUpdateError } = await supabase.from('device_commands').update({ status: finalStatus }).eq('id', command.id);
-    if (statusUpdateError) throw statusUpdateError;
-
-    if (finalStatus === 'acked') {
-      const { data: existingState } = await supabase.from('device_states').select('state').eq('device_id', id).maybeSingle();
-      const mergedState = { ...(existingState?.state || {}), [capability]: value };
-      const { error: stateError } = await supabase
-        .from('device_states')
-        .upsert({ device_id: id, state: mergedState, updated_at: new Date().toISOString() }, { onConflict: 'device_id' });
-      if (stateError) throw stateError;
-    }
-
-    return NextResponse.json({ commandId: command.id, status: finalStatus });
+    return NextResponse.json({ commandId, status });
   } catch (error) {
     logger.error('Failed to send IoT device command', { error: error.message });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });

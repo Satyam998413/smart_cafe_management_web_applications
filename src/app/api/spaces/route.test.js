@@ -8,7 +8,7 @@ import { GET, POST } from './route.js';
 vi.mock('@/lib/supabaseClient.js', () => ({ default: { from: vi.fn() } }));
 
 const URL = 'http://localhost/api/spaces?siteId=site-1';
-const getRequest = (headers = {}) => new NextRequest(URL, { method: 'GET', headers });
+const getRequest = (headers = {}, url = URL) => new NextRequest(url, { method: 'GET', headers });
 const postRequest = (body, headers = {}) =>
   new NextRequest('http://localhost/api/spaces', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
 
@@ -35,6 +35,28 @@ describe('GET /api/spaces', () => {
 
     expect(res.status).toBe(200);
     expect(spacesBuilder.order).toHaveBeenCalledWith('sort_order', { ascending: true });
+  });
+
+  it('filters by kind when provided (Rooms page: kind=room)', async () => {
+    const siteBuilder = createMockQueryBuilder({ data: { org_id: 'org-1' }, error: null });
+    const spacesBuilder = createMockQueryBuilder({ data: [{ id: 'sp1', kind: 'room' }], error: null });
+    supabase.from.mockReturnValueOnce(siteBuilder).mockReturnValueOnce(spacesBuilder);
+
+    const res = await GET(getRequest(authHeader({ role: 'owner', orgId: 'org-1' }), `${URL}&kind=room`));
+
+    expect(res.status).toBe(200);
+    expect(spacesBuilder.eq).toHaveBeenCalledWith('kind', 'room');
+  });
+
+  it('does not filter by kind when omitted', async () => {
+    const siteBuilder = createMockQueryBuilder({ data: { org_id: 'org-1' }, error: null });
+    const spacesBuilder = createMockQueryBuilder({ data: [{ id: 'sp1', kind: 'table' }], error: null });
+    supabase.from.mockReturnValueOnce(siteBuilder).mockReturnValueOnce(spacesBuilder);
+
+    const res = await GET(getRequest(authHeader({ role: 'owner', orgId: 'org-1' })));
+
+    expect(res.status).toBe(200);
+    expect(spacesBuilder.eq).not.toHaveBeenCalledWith('kind', expect.anything());
   });
 });
 

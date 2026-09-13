@@ -17,16 +17,26 @@ import {
   Banknote,
   Cpu,
   Truck,
-  Wallet
+  Wallet,
+  BedDouble,
+  CalendarRange
 } from 'lucide-react';
 
 // Routed replacement for the old NavTabs.jsx (tab-state onClick/onChange) —
 // same role-conditional list and the same sliding-pill visual, but each
 // entry is a real <Link> and "active" is derived from the URL instead of
 // activeTab state.
-export default function NavLinks({ authRole, badges = {} }) {
+//
+// `premiseType` (org.premiseType from GET /api/organizations/me, fetched by
+// the layout) only affects the Rooms entry — a hotel-only surface — and is
+// undefined until that fetch resolves, so Rooms simply doesn't render for a
+// beat on first paint rather than flashing then disappearing for a non-hotel
+// org. Bookings stays visible for every owner/manager regardless of premise
+// type, same as every other owner/manager nav entry here.
+export default function NavLinks({ authRole, premiseType, badges = {} }) {
   const isCustomer = authRole === 'customer';
   const isOwnerOrManager = authRole === 'owner' || authRole === 'manager';
+  const isHotel = premiseType === 'hotel';
   const pathname = usePathname();
   const layoutId = useId();
 
@@ -51,6 +61,8 @@ export default function NavLinks({ authRole, badges = {} }) {
         ...(isOwnerOrManager ? [{ href: '/devices', label: 'Devices', icon: Cpu }] : []),
         ...(isOwnerOrManager ? [{ href: '/delivery', label: 'Delivery', icon: Truck }] : []),
         ...(isOwnerOrManager ? [{ href: '/wallet', label: 'Wallet', icon: Wallet }] : []),
+        ...(isOwnerOrManager && isHotel ? [{ href: '/rooms', label: 'Rooms', icon: BedDouble }] : []),
+        ...(isOwnerOrManager ? [{ href: '/bookings', label: 'Bookings', icon: CalendarRange }] : []),
         { href: '/chats', label: isOwnerOrManager ? 'Chat Oversight' : 'Customer Chats', icon: MessageCircle },
         { href: '/team', label: 'Team Chat', icon: MessagesSquare }
       ];

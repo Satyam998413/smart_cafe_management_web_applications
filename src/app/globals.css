@@ -1283,4 +1283,68 @@ select:focus-visible,
   border-top: none;
 }
 
+/* Public guest landing pages — the centered card shell shared by
+   src/app/order/[spaceId]/page.js (dine-in QR ordering) and
+   src/app/stay/[siteId]/page.js (room booking). Both pages already
+   reference these class names; defining them here (additive only, nothing
+   above changes) is what actually centers/sizes the card instead of it
+   falling back to unstyled block flow. */
+.guest-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.guest-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.guest-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.guest-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.guest-org-name {
+  font-size: 1.15rem;
+}
+
+.guest-space-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+.guest-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.guest-form-error {
+  font-size: 0.8rem;
+  color: var(--status-cancelled);
+}
+
+/* Room-booking specific: a wider card than the dine-in QR shell since it
+   hosts a date picker + room grid rather than one name/email form. */
+.stay-card {
+  max-width: 640px;
+}
+
 } /* end @layer components */

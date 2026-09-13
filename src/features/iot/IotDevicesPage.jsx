@@ -2,21 +2,36 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Cpu, RadioTower, Loader2 } from 'lucide-react';
+import { Cpu, RadioTower, Loader2, Lightbulb, Fan, Snowflake, Plus, Power, PowerOff, LayoutGrid, List } from 'lucide-react';
 import { jsonBody } from '@/lib/apiClient.js';
+import { isOnOffCapability } from '@/lib/iot/deviceCommands.js';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { listVariants, rowVariants } from '@/components/ui/motionVariants';
+import TiltCard from '@/components/ui/TiltCard';
+import SpaceLayoutCanvas from './SpaceLayoutCanvas';
 
 const POLL_MS = 5000;
-// Purely a display heuristic for choosing a switch vs. a numeric control —
-// the server treats every capability name as an opaque string (see
-// commands/route.js), so this is client-only convenience, not a contract.
-const isOnOffCapability = (name) => /^(on_off|on|off|power|switch)$/i.test(name);
+
+// Equipment taxonomy — exactly the categories asked for (lamp/fan/ac, plus
+// a generic "other" catch-all), each with its own icon. Every device
+// registered through this form gets a default `on_off` capability so the
+// green/red state coloring and both master switches always have something
+// to act on — a generic multi-capability editor UI wasn't asked for here.
+const DEVICE_TYPES = [
+  { value: 'lamp', label: 'Lamp', icon: Lightbulb },
+  { value: 'fan', label: 'Fan', icon: Fan },
+  { value: 'ac', label: 'AC', icon: Snowflake },
+  { value: 'other', label: 'Other', icon: Cpu }
+];
+const getTypeIcon = (type) => DEVICE_TYPES.find((t) => t.value === type)?.icon || Cpu;
 
 /**
- * Owner/Manager IoT device dashboard (plan Phase 6c). Devices are scoped to
- * a space, and there's no "all my org's devices" endpoint, so this is a
- * Site -> Space picker feeding GET /api/iot-devices?spaceId=.
+ * Owner/Manager IoT device dashboard (plan Phase 6c, extended with a real
+ * equipment taxonomy, sequential device codes, and MCB-style master
+ * switches). Devices are scoped to a space, and there's no "all my org's
+ * devices" endpoint, so this is a Site -> Space picker feeding
+ * GET /api/iot-devices?spaceId=, plus one org-wide master switch that
+ * doesn't need a space selected at all.
  *
  * Commands never optimistically flip a control's displayed state — every
  * toggle/value send disables the control, waits for the response, then
@@ -37,9 +52,22 @@ export default function IotDevicesPage({ apiFetch }) {
   const [spacesError, setSpacesError] = useState('');
   const [spaceId, setSpaceId] = useState('');
 
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'floor-plan'
+
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState('');
+
+  const [orgSwitchBusy, setOrgSwitchBusy] = useState(false);
+  const [orgSwitchResult, setOrgSwitchResult] = useState('');
+  const [spaceSwitchBusy, setSpaceSwitchBusy] = useState(false);
+  const [spaceSwitchResult, setSpaceSwitchResult] = useState('');
+
+  const [regName, setRegName] = useState('');
+  const [regType, setRegType] = useState('lamp');
+  const [regQuantity, setRegQuantity] = useState(1);
+  const [regBusy, setRegBusy] = useState(false);
+  const [regError, setRegError] = useState('');
 
   const loadSites = async () => {
     setSitesLoading(true);
@@ -118,11 +146,85 @@ export default function IotDevicesPage({ apiFetch }) {
     return data;
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!regName.trim() || !spaceId) return;
+    setRegBusy(true);
+    setRegError('');
+    try {
+      const res = await apiFetch('/iot-devices', {
+        method: 'POST',
+        ...jsonBody({ spaceId, name: regName.trim(), type: regType, capabilities: ['on_off'], quantity: regQuantity })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to register device');
+      setRegName('');
+      setRegQuantity(1);
+      await loadDevices();
+    } catch (e) {
+      setRegError(e.message || 'Failed to register device');
+    } finally {
+      setRegBusy(false);
+    }
+  };
+
+  const runMasterSwitch = async (value, targetSpaceId) => {
+    const setBusy = targetSpaceId ? setSpaceSwitchBusy : setOrgSwitchBusy;
+    const setResult = targetSpaceId ? setSpaceSwitchResult : setOrgSwitchResult;
+    setBusy(true);
+    setResult('');
+    try {
+      const res = await apiFetch('/iot-devices/master-switch', {
+        method: 'POST',
+        ...jsonBody(targetSpaceId ? { spaceId: targetSpaceId, value } : { value })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Master switch failed');
+      setResult(`Toggled ${data.toggled} device${data.toggled === 1 ? '' : 's'}${data.skipped ? `, skipped ${data.skipped}` : ''}.`);
+      if (spaceId) await loadDevices();
+    } catch (e) {
+      setResult(e.message || 'Master switch failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOrgMasterSwitch = (value) => {
+    if (!value && !window.confirm('Turn OFF every device across the whole organization?')) return;
+    runMasterSwitch(value, null);
+  };
+
+  const selectedSpace = spaces.find((s) => s.id === spaceId);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>IoT Devices</h2>
       </div>
+
+      <TiltCard className="glass-card rounded-shape-lg shadow-elevation-2" wrapperClassName="w-full">
+        <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="entity-icon">
+              <Power size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Master Switch — All Devices</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {orgSwitchResult || 'Turns every switchable device across the whole organization on or off.'}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(true)}>
+              {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <Power size={14} />} On
+            </button>
+            <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(false)}>
+              {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <PowerOff size={14} />} Off
+            </button>
+          </div>
+        </div>
+      </TiltCard>
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <select className="field-input" style={{ maxWidth: 260 }} value={siteId} onChange={(e) => setSiteId(e.target.value)} disabled={sitesLoading}>
@@ -141,6 +243,27 @@ export default function IotDevicesPage({ apiFetch }) {
             </option>
           ))}
         </select>
+
+        {spaceId && (
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button
+              type="button"
+              className={`chip ${viewMode === 'list' ? 'active' : ''}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              onClick={() => setViewMode('list')}
+            >
+              <List size={14} /> List
+            </button>
+            <button
+              type="button"
+              className={`chip ${viewMode === 'floor-plan' ? 'active' : ''}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              onClick={() => setViewMode('floor-plan')}
+            >
+              <LayoutGrid size={14} /> Floor Plan
+            </button>
+          </div>
+        )}
       </div>
 
       {sitesError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{sitesError}</div>}
@@ -166,52 +289,116 @@ export default function IotDevicesPage({ apiFetch }) {
             Pick a space to see its devices.
           </div>
         )
-      ) : devicesLoading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      ) : devicesError ? (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--status-cancelled)' }}>
-          {devicesError}
-        </div>
-      ) : devices.length === 0 ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <Cpu size={28} strokeWidth={1.5} />
-          No devices registered for this space yet.
-        </div>
       ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} variants={listVariants} initial="hidden" animate="show">
-          {devices.map((device) => (
-            <motion.div key={device.id} className="glass-card" style={{ padding: '1.1rem 1.25rem' }} variants={rowVariants} layout>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: device.capabilities.length ? '0.5rem' : 0 }}>
-                <div className="entity-icon">
-                  <Cpu size={18} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{device.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {device.type} · {device.vendor}
-                    {device.stateUpdatedAt ? ` · updated ${new Date(device.stateUpdatedAt).toLocaleTimeString()}` : ''}
-                  </div>
-                </div>
+        <>
+          <div className="glass-card" style={{ padding: '1.1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Master Switch — {selectedSpace?.label || 'This space'}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {spaceSwitchResult || 'Turns every switchable device in this space on or off.'}
               </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={spaceSwitchBusy} onClick={() => runMasterSwitch(true, spaceId)}>
+                {spaceSwitchBusy ? <Loader2 size={14} className="spin" /> : <Power size={14} />} On
+              </button>
+              <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={spaceSwitchBusy} onClick={() => runMasterSwitch(false, spaceId)}>
+                {spaceSwitchBusy ? <Loader2 size={14} className="spin" /> : <PowerOff size={14} />} Off
+              </button>
+            </div>
+          </div>
 
-              {device.capabilities.length === 0 ? (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No controllable capabilities registered.</div>
-              ) : (
-                device.capabilities.map((capability) => (
-                  <CapabilityControl
-                    key={capability}
-                    capability={capability}
-                    value={device.state?.[capability]}
-                    onSend={(value) => sendCommand(device.id, capability, value)}
-                  />
-                ))
-              )}
+          <form onSubmit={handleRegister} className="glass-card" style={{ padding: '1.1rem 1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: '1 1 200px', minWidth: 160 }}>
+              <label className="field-label">Equipment name</label>
+              <input className="field-input" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="e.g. Ceiling Lamp" required />
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <label className="field-label">Type</label>
+              <select className="field-input" value={regType} onChange={(e) => setRegType(e.target.value)}>
+                {DEVICE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ width: 100 }}>
+              <label className="field-label">Quantity</label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                className="field-input"
+                value={regQuantity}
+                onChange={(e) => setRegQuantity(Math.max(1, Math.trunc(Number(e.target.value)) || 1))}
+              />
+            </div>
+            <button type="submit" className="icon-btn" style={{ width: 'auto', padding: '0 1.1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center', height: 42 }} disabled={regBusy}>
+              {regBusy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Add
+            </button>
+            {regError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.8rem', flexBasis: '100%' }}>{regError}</div>}
+          </form>
+
+          {devicesLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : devicesError ? (
+            <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--status-cancelled)' }}>
+              {devicesError}
+            </div>
+          ) : devices.length === 0 ? (
+            <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+              <Cpu size={28} strokeWidth={1.5} />
+              No devices registered for this space yet.
+            </div>
+          ) : viewMode === 'floor-plan' ? (
+            <SpaceLayoutCanvas devices={devices} spaceLabel={selectedSpace?.label || 'Space'} apiFetch={apiFetch} onDeviceMoved={loadDevices} />
+          ) : (
+            <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} variants={listVariants} initial="hidden" animate="show">
+              {devices.map((device) => {
+                const onOffCapability = device.capabilities.find(isOnOffCapability);
+                const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : null;
+                const TypeIcon = getTypeIcon(device.type);
+                const iconColor = isOn === null ? 'var(--text-muted)' : isOn ? '#059669' : '#dc2626';
+                return (
+                  <motion.div key={device.id} className="glass-card" style={{ padding: '1.1rem 1.25rem' }} variants={rowVariants} layout>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: device.capabilities.length ? '0.5rem' : 0 }}>
+                      <div className="entity-icon" style={{ color: iconColor, background: isOn === null ? undefined : isOn ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)' }}>
+                        <TypeIcon size={18} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {device.name}
+                          <span className="order-id" style={{ fontWeight: 600 }}>{device.deviceCode}</span>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {device.type} · {device.vendor}
+                          {device.stateUpdatedAt ? ` · updated ${new Date(device.stateUpdatedAt).toLocaleTimeString()}` : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    {device.capabilities.length === 0 ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No controllable capabilities registered.</div>
+                    ) : (
+                      device.capabilities.map((capability) => (
+                        <CapabilityControl
+                          key={capability}
+                          capability={capability}
+                          value={device.state?.[capability]}
+                          onSend={(value) => sendCommand(device.id, capability, value)}
+                        />
+                      ))
+                    )}
+                  </motion.div>
+                );
+              })}
             </motion.div>
-          ))}
-        </motion.div>
+          )}
+        </>
       )}
     </div>
   );

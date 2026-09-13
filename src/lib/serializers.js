@@ -255,11 +255,17 @@ export const serializeDevice = (device) => {
   return {
     id: device.id,
     spaceId: device.space_id,
+    deviceNo: device.device_no,
+    // Human-facing id, e.g. "DEV-0007" — formatting lives here, not stored,
+    // so the DB only ever holds the raw per-org sequential integer.
+    deviceCode: `DEV-${String(device.device_no).padStart(4, '0')}`,
     name: device.name,
     type: device.type,
     vendor: device.vendor,
     externalDeviceId: device.external_device_id,
     capabilities: device.capabilities || [],
+    posX: toNumber(device.pos_x),
+    posY: toNumber(device.pos_y),
     state: deviceState?.state ?? {},
     stateUpdatedAt: deviceState?.updated_at ?? null
   };

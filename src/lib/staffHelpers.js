@@ -9,6 +9,14 @@
 export const STAFF_ROLES = ['manager', 'cook', 'waiter'];
 export const SALT_ROUNDS = 10;
 
+// Every non-customer, non-master_admin role that belongs to one org — used
+// by GET /api/admin/organizations/[id]/staff (Master Admin's cross-org
+// staff visibility view) to list the whole org roster, Owner included,
+// unlike STAFF_ROLES above which is deliberately Owner-less (an Owner is
+// never *created* through the staff endpoints, but they're still staff for
+// listing purposes).
+export const ALL_ORG_ROLES = ['owner', ...STAFF_ROLES];
+
 // Hierarchical password-reset authorization (plan Phase 2d) — a level above
 // always resets the level(s) below it, never laterally or upward:
 //   master_admin -> owner (any org)

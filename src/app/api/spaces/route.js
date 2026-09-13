@@ -5,10 +5,14 @@ import { serializeSpace } from '@/lib/serializers.js';
 import { requireAuth, requireRole } from '@/lib/auth.js';
 import { SPACE_KINDS, assertSiteInOrg } from '@/lib/spaceHelpers.js';
 
-// GET /api/spaces?siteId= — ported from spaceController.js's listSpaces.
-// The layout tree for one site (plan Phase 2a's layout builder). Flat list,
-// ordered by sort_order; the tree shape (floor -> table/room/canteen) is
-// reconstructed client-side from parentSpaceId.
+// GET /api/spaces?siteId=&kind=&includeImages= — ported from
+// spaceController.js's listSpaces. The layout tree for one site (plan
+// Phase 2a's layout builder). Flat list, ordered by sort_order; the tree
+// shape (floor -> table/room/canteen) is reconstructed client-side from
+// parentSpaceId. `kind` is an optional narrowing filter — added for the
+// Rooms management page (hotel premise), which only ever wants
+// kind='room' and would otherwise have to pull (and re-filter) every
+// floor/table/canteen at the site just to find its rooms.
 export async function GET(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
@@ -24,12 +28,14 @@ export async function GET(request) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
     }
 
+    const kind = request.nextUrl.searchParams.get('kind');
     const includeImages = request.nextUrl.searchParams.get('includeImages') === '1';
-    const { data, error } = await supabase
+    let query = supabase
       .from('spaces')
       .select(includeImages ? '*, space_images(*)' : '*')
-      .eq('site_id', siteId)
-      .order('sort_order', { ascending: true });
+      .eq('site_id', siteId);
+    if (kind) query = query.eq('kind', kind);
+    const { data, error } = await query.order('sort_order', { ascending: true });
     if (error) throw error;
 
     return NextResponse.json(data.map(serializeSpace));

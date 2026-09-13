@@ -14,6 +14,7 @@ const TABS = [
   { path: '/ai', label: 'AI Credentials' },
   { path: '/data-plane', label: 'Data Plane' },
   { path: '/wallet', label: 'Wallet' },
+  { path: '/staff', label: 'Staff' },
   { path: '/history', label: 'Plan History' },
   { path: '/security-log', label: 'Security Log' }
 ];

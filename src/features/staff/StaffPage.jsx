@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, KeyRound, Users, MapPin, RotateCcw } from 'lucide-react';
+import { Pencil, KeyRound, Users, MapPin, RotateCcw, Loader2 } from 'lucide-react';
 import { jsonBody } from '@/lib/apiClient.js';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -10,6 +10,15 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { listVariants, rowVariants } from '@/components/ui/motionVariants';
 import { buildSpaceTree, flattenSpaceTree, spaceLabel } from '@/lib/spaceTree.js';
 import { canResetPassword } from '@/lib/staffHelpers.js';
+
+// The two flags an Owner can delegate to a Manager (PATCH
+// /api/staff/[id]/permissions) — same whitelist as that route's own
+// GRANTABLE_KEYS, kept in sync manually since the client has no way to
+// import a server-only route module's constant.
+const PERMISSION_TOGGLES = [
+  { key: 'canResetStaffPassword', label: 'Reset cook/waiter passwords' },
+  { key: 'canControlIot', label: 'Control IoT devices' }
+];
 
 // Ported from react_app/src/pages/StaffPage.jsx, extended (plan Phase 2c/2d)
 // with the waiter role, site/space assignment, and permission-gated
@@ -55,6 +64,12 @@ export default function StaffPage({ apiFetch, authRole }) {
   const [assignSpacesLoading, setAssignSpacesLoading] = useState(false);
   const [assignError, setAssignError] = useState('');
   const [assigning, setAssigning] = useState(false);
+
+  // Owner-only permission toggles (PATCH /api/staff/:id/permissions) —
+  // pending/error tracked per "personId:key" so one row's in-flight toggle
+  // never disables or blanks another row's, or its sibling toggle.
+  const [permissionPending, setPermissionPending] = useState({});
+  const [permissionErrors, setPermissionErrors] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -130,6 +145,27 @@ export default function StaffPage({ apiFetch, authRole }) {
       targetRole: person.role,
       targetOrgId: 'self'
     });
+
+  const handleTogglePermission = async (person, key) => {
+    const pendingKey = `${person.id}:${key}`;
+    const nextValue = !person.permissions?.[key];
+    setPermissionPending((prev) => ({ ...prev, [pendingKey]: true }));
+    setPermissionErrors((prev) => ({ ...prev, [pendingKey]: '' }));
+    try {
+      const res = await apiFetch(`/staff/${person.id}/permissions`, { method: 'PATCH', ...jsonBody({ [key]: nextValue }) });
+      const data = await res.json();
+      if (!res.ok) {
+        setPermissionErrors((prev) => ({ ...prev, [pendingKey]: data.message || 'Failed to update permission.' }));
+        return;
+      }
+      setStaff((prev) => prev.map((p) => (p.id === person.id ? { ...p, permissions: data.permissions } : p)));
+    } catch (e) {
+      console.error('Failed to update staff permission:', e);
+      setPermissionErrors((prev) => ({ ...prev, [pendingKey]: 'Network error — please try again.' }));
+    } finally {
+      setPermissionPending((prev) => ({ ...prev, [pendingKey]: false }));
+    }
+  };
 
   const openAssign = async (person) => {
     setAssignTarget(person);
@@ -297,43 +333,78 @@ export default function StaffPage({ apiFetch, authRole }) {
         </div>
       ) : (
         <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
-          {staff.map((person) => (
-            <motion.div key={person.id} className="glass-card staff-row" variants={rowVariants}>
-              <div className="staff-avatar">{(person.name || '?')[0].toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>{person.name}</strong>
-                  <span className={`role-badge role-${person.role}`}>{person.role}</span>
+          {staff.map((person) => {
+            const showPermissionToggles = authRole === 'owner' && person.role === 'manager';
+            return (
+              <motion.div key={person.id} className="glass-card" variants={rowVariants}>
+                <div className="staff-row">
+                  <div className="staff-avatar">{(person.name || '?')[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong style={{ color: 'var(--text-primary)' }}>{person.name}</strong>
+                      <span className={`role-badge role-${person.role}`}>{person.role}</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{person.email || person.phone || 'No contact on file'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                      <MapPin size={11} />
+                      {person.spaceId ? spaceLookup[person.spaceId]?.label && `${spaceLookup[person.spaceId].label} · ${spaceLookup[person.spaceId].siteName}` : 'Unassigned'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="icon-btn" onClick={() => openAssign(person)} title="Assign to site/space">
+                      <MapPin size={15} />
+                    </button>
+                    <button className="icon-btn" onClick={() => openEdit(person)} title="Edit">
+                      <Pencil size={15} />
+                    </button>
+                    {canResetTarget(person) && (
+                      <button
+                        className="icon-btn"
+                        title="Reset password"
+                        onClick={() => {
+                          setResetTargetId(person.id);
+                          setResetPassword('');
+                          setResetError('');
+                        }}
+                      >
+                        <KeyRound size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{person.email || person.phone || 'No contact on file'}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
-                  <MapPin size={11} />
-                  {person.spaceId ? spaceLookup[person.spaceId]?.label && `${spaceLookup[person.spaceId].label} · ${spaceLookup[person.spaceId].siteName}` : 'Unassigned'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="icon-btn" onClick={() => openAssign(person)} title="Assign to site/space">
-                  <MapPin size={15} />
-                </button>
-                <button className="icon-btn" onClick={() => openEdit(person)} title="Edit">
-                  <Pencil size={15} />
-                </button>
-                {canResetTarget(person) && (
-                  <button
-                    className="icon-btn"
-                    title="Reset password"
-                    onClick={() => {
-                      setResetTargetId(person.id);
-                      setResetPassword('');
-                      setResetError('');
-                    }}
-                  >
-                    <KeyRound size={15} />
-                  </button>
+
+                {showPermissionToggles && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '0.75rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {PERMISSION_TOGGLES.map(({ key, label }) => {
+                      const pendingKey = `${person.id}:${key}`;
+                      const isOn = Boolean(person.permissions?.[key]);
+                      const isPending = Boolean(permissionPending[pendingKey]);
+                      const error = permissionErrors[pendingKey];
+                      return (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                          <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{label}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            {error && <span style={{ fontSize: '0.72rem', color: 'var(--status-cancelled)' }}>{error}</span>}
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isOn}
+                              aria-label={`${label} — ${person.name}`}
+                              className={`switch ${isOn ? 'on' : ''}`}
+                              disabled={isPending}
+                              onClick={() => handleTogglePermission(person, key)}
+                            >
+                              {isPending ? <Loader2 size={12} className="spin" style={{ margin: 'auto' }} /> : <span className="switch-knob" />}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
 

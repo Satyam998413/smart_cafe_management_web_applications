@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import Header from '@/components/Header';
@@ -23,6 +23,8 @@ const ROLE_GATES = [
   { prefix: '/devices', roles: ['owner', 'manager'] },
   { prefix: '/delivery', roles: ['owner', 'manager'] },
   { prefix: '/wallet', roles: ['owner', 'manager'] },
+  { prefix: '/rooms', roles: ['owner', 'manager'] },
+  { prefix: '/bookings', roles: ['owner', 'manager'] },
   { prefix: '/cart', roles: ['customer'] },
   { prefix: '/billing', roles: ['customer'] },
   { prefix: '/smart-ai', roles: ['customer'] },
@@ -48,6 +50,28 @@ export default function DashboardLayout({ children }) {
     }
   }, [pathname, authRole, router]);
 
+  // Org premise type — fetched once here (rather than in useDashboardState,
+  // which every route already depends on) purely so NavLinks can hide the
+  // Rooms nav entry for a non-hotel org. Not the actual gate: Rooms' own
+  // page component independently re-checks GET /api/organizations/me before
+  // rendering anything, same as every other owner/manager-only surface in
+  // this app that also enforces its rule server-side.
+  const [premiseType, setPremiseType] = useState(null);
+  useEffect(() => {
+    if (!authToken) return;
+    let cancelled = false;
+    apiFetch('/organizations/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data && data.premiseType) setPremiseType(data.premiseType);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authToken]);
+
   if (authToken === undefined) return null;
   if (!authToken) return <LoginPage onLoginSuccess={handleLoginSuccess} />;
 
@@ -58,7 +82,7 @@ export default function DashboardLayout({ children }) {
 
         <main className="dashboard-container">
           <NotificationBanner apiFetch={apiFetch} authRole={authRole} socket={socket} onNavigateToWallet={() => router.push('/wallet')} />
-          <NavLinks authRole={authRole} />
+          <NavLinks authRole={authRole} premiseType={premiseType} />
 
           <AnimatePresence mode="wait">
             <motion.div
