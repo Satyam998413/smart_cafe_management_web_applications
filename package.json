@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
+    "prebuild": "npm run swagger",
     "build": "next build",
     "start": "cross-env NODE_ENV=production node server.js",
     "lint": "eslint",
     "test": "vitest run",
     "seed": "node seed/seed.js",
     "seed:clean": "node seed/clean.js",
-    "db:clean": "node seed/clean-all.js"
+    "db:clean": "node seed/clean-all.js",
+    "swagger": "node scripts/generateSwagger.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -24,13 +26,15 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.45.0",
     "next": "16.3.4",
+    "next-swagger-doc": "^0.5.0",
     "pdfkit": "^0.20.2",
     "razorpay": "^2.9.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-leaflet": "^5.0.0",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "swagger-ui-react": "^5.32.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

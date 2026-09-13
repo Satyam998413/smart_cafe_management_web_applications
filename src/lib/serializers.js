@@ -29,6 +29,11 @@ export const serializeUser = (user) => {
     // Staff page needs it to show/edit who's assigned where without a
     // second round-trip per row.
     spaceId: user.space_id ?? null,
+    // Grantable flags (canResetStaffPassword, canControlIot) — only ever
+    // meaningful for a Manager, empty object for everyone else. Not
+    // sensitive; the Staff page needs it to render an Owner's permission
+    // toggles without a second round-trip per row.
+    permissions: user.permissions || {},
     preferences: { orderCount: user.order_count ?? 0 },
     createdAt: user.created_at
   };
@@ -132,7 +137,53 @@ export const serializeSpace = (space) => {
     number: space.number,
     isBookable: space.is_bookable,
     iotEnabled: space.iot_enabled,
-    sortOrder: space.sort_order
+    sortOrder: space.sort_order,
+    // Room-specific (hotel premise) — null/unused for every other kind.
+    pricePerNight: toNumber(space.price_per_night),
+    description: space.description ?? null,
+    maxOccupancy: space.max_occupancy ?? null,
+    // Present only when the caller's query joined space_images (see
+    // GET /api/spaces's `?includeImages=1`) — undefined otherwise, so this
+    // key is simply absent rather than always null on every response.
+    images: space.space_images ? space.space_images.map(serializeSpaceImage) : undefined
+  };
+};
+
+export const serializeSpaceImage = (image) => {
+  if (!image) return null;
+  return {
+    id: image.id,
+    spaceId: image.space_id,
+    imageUrl: image.image_url,
+    sortOrder: image.sort_order,
+    createdAt: image.created_at
+  };
+};
+
+export const serializeBooking = (booking) => {
+  if (!booking) return null;
+  return {
+    id: booking.id,
+    orgId: booking.org_id,
+    siteId: booking.site_id,
+    spaceId: booking.space_id,
+    customerId: booking.customer_id,
+    checkIn: booking.check_in,
+    checkOut: booking.check_out,
+    numGuests: booking.num_guests,
+    nightlyRate: toNumber(booking.nightly_rate),
+    totalPrice: toNumber(booking.total_price),
+    status: booking.status,
+    paymentMethod: booking.payment_method,
+    razorpayOrderId: booking.razorpay_order_id,
+    cashCollectedBy: booking.cash_collected_by,
+    cashCollectedAt: booking.cash_collected_at,
+    specialRequests: booking.special_requests,
+    createdAt: booking.created_at,
+    paidAt: booking.paid_at,
+    // Present when the query joined spaces/sites (see GET /api/bookings).
+    space: booking.space ? serializeSpace(booking.space) : undefined,
+    site: booking.site ? { id: booking.site.id, name: booking.site.name } : undefined
   };
 };
 

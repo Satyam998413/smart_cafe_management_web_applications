@@ -12,6 +12,50 @@ import { authRateLimit } from '@/lib/publicRateLimit.js';
 // new device/install). Customers never have a password, so "the identifier
 // already exists" IS the login. `name` is only required when actually
 // creating an account.
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new customer, or log in an existing one
+ *     description: Customers never have a password, so finding an existing account by hiveId/email/phone IS the login path. name is only required when actually creating a new account.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [hiveId]
+ *             properties:
+ *               name: { type: string, description: 'Required only for new accounts' }
+ *               hiveId: { type: string, description: 'Unique id for this device/install' }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               spaceId: { type: string, description: 'Optional space id resolved from a scanned QR code' }
+ *     responses:
+ *       200:
+ *         description: Existing account logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 isNewUser: { type: boolean }
+ *                 user: { $ref: '#/components/schemas/User' }
+ *                 token: { type: string }
+ *       400:
+ *         description: Missing required fields, or the QR code is no longer valid
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       409:
+ *         description: Email or phone already in use by another account
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const limited = authRateLimit(request);
   if (limited) return limited;

@@ -12,6 +12,42 @@ import { triggerAccountingExport, emitToRooms } from '@/lib/billingHelpers.js';
 // WHERE clause (status='pending' AND payment_method='cash') is the whole
 // guard — same atomic-conditional-UPDATE pattern as the orders claim route,
 // so a double-confirm affects 0 rows the second time.
+/**
+ * @swagger
+ * /api/bills/{id}/collect-cash:
+ *   post:
+ *     tags: [Bills]
+ *     summary: Confirm cash has been physically collected for a bill
+ *     description: Owner or Manager only. Marks a pending cash-payment-method bill as paid. Safe to call twice - the second call matches zero rows and 404s instead of double-processing.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cash collection confirmed, bill marked paid
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Bill' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       403:
+ *         description: Caller is not an Owner or Manager
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       404:
+ *         description: No pending cash bill found with that id
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request, { params }) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

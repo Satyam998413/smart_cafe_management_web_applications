@@ -2,22 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircleOff } from 'lucide-react';
+import { MessageCircleOff, Smile, Mic, Brain, Volume2 } from 'lucide-react';
 import VoiceOrb from './VoiceOrb';
 import AiChatBubble from './AiChatBubble';
 import Button from './ui/Button';
+import { ORB_THEME } from './orbTheme';
 import { sendAiTurn, runInteractiveTurn } from '@/lib/aiOrdering.js';
 
-// Ported unchanged from react_app/src/components/SmartAiVoiceTab.jsx.
 const SpeechRecognitionApi = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 const speechSynthesisApi = typeof window !== 'undefined' ? window.speechSynthesis : null;
 
+// Exact copy match for flutter_app's smart_ai_voice_tab.dart
+// _getStatusTextForState()/_getStatusIconForState() — same status-pill text
+// and icon per WaiterState.
 const STATE_LABELS = {
   idle: 'Smart Waiter AI Ready',
-  listening: 'Listening…',
-  thinking: 'Thinking…',
-  speaking: 'Speaking…'
+  listening: 'Smart Waiter is Listening...',
+  thinking: 'Smart Waiter is Processing...',
+  speaking: 'Smart Waiter is Speaking...'
 };
+const STATE_ICONS = { idle: Smile, listening: Mic, thinking: Brain, speaking: Volume2 };
 
 /**
  * Voice-first half of the merged Smart AI page (see SmartAiPage.jsx).
@@ -166,6 +170,17 @@ export default function SmartAiVoiceTab({
     startListening();
   };
 
+  // Double-tap: cancel everything and go still, discarding whatever was
+  // heard — matches smart_ai_voice_tab.dart's _forceStop (single tap
+  // stops-and-submits via handleOrbClick above; double tap discards).
+  const handleOrbDoubleClick = () => {
+    speechSynthesisApi?.cancel();
+    recognitionRef.current?.stop();
+    setLiveTranscript('');
+    setWaiterState('idle');
+    setSpeechText('Tell me what you would like to order or tap any item to add it to your cart!');
+  };
+
   if (!supported) {
     return (
       <div style={{ padding: '3rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
@@ -180,37 +195,57 @@ export default function SmartAiVoiceTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '1.5rem 2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ padding: '0.5rem' }}>
-          <VoiceOrb state={waiterState} size={140} onClick={handleOrbClick} />
-        </div>
-
+      <div style={{ padding: '1.5rem 2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.875rem' }}>
+        {/* Status pill — same colored, icon+text banner as the Flutter
+            orb's top status bar, recolored per-state from the same
+            orbTheme.js `core` the orb itself uses. */}
         <AnimatePresence mode="wait">
-          <motion.strong
-            key={waiterState}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2 }}
-            style={{ color: 'var(--text-primary)', letterSpacing: '0.01em' }}
-          >
-            {STATE_LABELS[waiterState]}
-          </motion.strong>
+          {(() => {
+            const theme = ORB_THEME[waiterState] || ORB_THEME.idle;
+            const StatusIcon = STATE_ICONS[waiterState] || Smile;
+            return (
+              <motion.div
+                key={waiterState}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.35rem 0.9rem',
+                  borderRadius: 999,
+                  background: `${theme.core}1F`,
+                  border: `1px solid ${theme.core}66`
+                }}
+              >
+                <StatusIcon size={16} color={theme.core} strokeWidth={2} />
+                <strong style={{ color: theme.core, fontSize: '0.75rem', fontWeight: 700 }}>{STATE_LABELS[waiterState]}</strong>
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
+
+        <div style={{ padding: '0.5rem' }}>
+          <VoiceOrb state={waiterState} size={150} onClick={handleOrbClick} onDoubleClick={handleOrbDoubleClick} />
+        </div>
 
         {/* Transient, local-only feedback (mic errors, "couldn't hear you")
             that never gets pushed into the shared chat history below —
             hidden once it just echoes the last reply already in that list. */}
-        {speechText && speechText !== initialGreetingText && waiterState === 'idle' && (
+        <AnimatePresence mode="wait">
           <motion.p
-            key={speechText}
+            key={waiterState === 'listening' ? 'listening-hint' : speechText}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', margin: 0, maxWidth: '28rem' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ color: waiterState === 'listening' ? ORB_THEME.listening.core : 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textAlign: 'center', margin: 0, maxWidth: '28rem' }}
           >
-            {speechText}
+            {waiterState === 'listening' ? 'Listening to your order...' : speechText}
           </motion.p>
-        )}
+        </AnimatePresence>
 
         {waiterState === 'listening' && (
           <motion.div
@@ -222,8 +257,9 @@ export default function SmartAiVoiceTab({
           </motion.div>
         )}
 
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
-          Tap the orb to {waiterState === 'listening' ? 'stop & submit' : waiterState === 'speaking' ? 'interrupt' : 'speak your order'}.
+        {/* Exact copy match for smart_ai_voice_tab.dart's hint row. */}
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>
+          {waiterState === 'listening' ? 'Tap AI Orb to stop & submit order' : 'Tap AI Orb to speak or tap ✨ for menu'}
         </p>
       </div>
 

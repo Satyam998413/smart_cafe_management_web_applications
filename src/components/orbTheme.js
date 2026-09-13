@@ -1,25 +1,33 @@
-// Ported unchanged from react_app/src/components/orbTheme.js. Shared orb
-// color language — warm brand amber at rest, rose while listening, a cool
-// indigo while processing, brighter gold while speaking.
+// Per-state orb color language — kept in exact lockstep with
+// flutter_app/lib/presentation/screens/smart_ai_voice_tab.dart's
+// `_getThemeColorForState()` (AppTheme.primary / AppTheme.error /
+// Colors.amber) so the web VoiceOrb and the Flutter orb read as the same
+// object, not a reinterpretation. `core` is the solid color VoiceOrb.jsx's
+// three concentric layers are built from; `gradient`/`glow` are kept for
+// MiniOrb.jsx/TypingIndicator.jsx's smaller decorative dots.
 export const ORB_THEME = {
   idle: {
-    gradient: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-    glow: 'rgba(217, 119, 6, 0.35)',
-    ring: 'rgba(217, 119, 6, 0.4)'
+    core: '#F59E0B',
+    gradient: 'linear-gradient(135deg, #F59E0B, #D97706)', // AppTheme.primaryGradient
+    glow: 'rgba(245, 158, 11, 0.4)',
+    ring: 'rgba(245, 158, 11, 0.4)'
   },
   listening: {
-    gradient: 'linear-gradient(135deg, #fb7185, #e11d48)',
-    glow: 'rgba(225, 29, 72, 0.4)',
-    ring: 'rgba(225, 29, 72, 0.45)'
+    core: '#EF4444', // AppTheme.error
+    gradient: 'linear-gradient(135deg, #EF4444, #DC2626)',
+    glow: 'rgba(239, 68, 68, 0.4)',
+    ring: 'rgba(239, 68, 68, 0.4)'
   },
   thinking: {
-    gradient: 'linear-gradient(135deg, #a5b4fc, #6366f1)',
-    glow: 'rgba(99, 102, 241, 0.4)',
-    ring: 'rgba(99, 102, 241, 0.4)'
+    core: '#FFC107', // Colors.amber
+    gradient: 'linear-gradient(135deg, #FFC107, #FF8F00)',
+    glow: 'rgba(255, 193, 7, 0.4)',
+    ring: 'rgba(255, 193, 7, 0.4)'
   },
   speaking: {
-    gradient: 'linear-gradient(135deg, #fbbf24, #d97706)',
-    glow: 'rgba(217, 119, 6, 0.45)',
-    ring: 'rgba(217, 119, 6, 0.5)'
+    core: '#F59E0B', // AppTheme.primary — same as idle, matches Flutter
+    gradient: 'linear-gradient(135deg, #F59E0B, #D97706)',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    ring: 'rgba(245, 158, 11, 0.4)'
   }
 };

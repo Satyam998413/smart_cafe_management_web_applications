@@ -5,6 +5,41 @@ import { requireAuth, requireRole } from '@/lib/auth.js';
 
 // GET /api/wallet/coin-plans — ported from walletController.js's
 // listCoinPlans. Owner only. Active recharge plans, cheapest first.
+/**
+ * @swagger
+ * /api/wallet/coin-plans:
+ *   get:
+ *     tags: [Wallet]
+ *     summary: List active coin recharge plans
+ *     description: Owner only. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active coin plans, cheapest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string }
+ *                   name: { type: string }
+ *                   priceInr: { type: number }
+ *                   coinsGranted: { type: integer }
+ *                   bonusCoins: { type: integer }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       403:
+ *         description: Caller is not an Owner
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function GET(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

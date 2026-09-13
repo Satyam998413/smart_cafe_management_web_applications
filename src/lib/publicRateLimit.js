@@ -21,3 +21,14 @@ export const qrContextRateLimit = createRateLimiter({
   keyFn: byIp,
   message: 'Too many requests — please wait a moment and try again.'
 });
+
+// GET /api/rooms — public room-browsing for the guest hotel-booking flow,
+// same enumerability tradeoff as qrContextRateLimit above and the same
+// ceiling (a guest paging through a site's rooms/dates a few times a
+// minute is normal use, not abuse).
+export const roomsRateLimit = createRateLimiter({
+  windowMs: 60_000,
+  max: 60,
+  keyFn: byIp,
+  message: 'Too many requests — please wait a moment and try again.'
+});

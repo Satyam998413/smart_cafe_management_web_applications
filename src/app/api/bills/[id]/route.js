@@ -17,6 +17,37 @@ import { fetchCapturedPayment } from '@/lib/razorpayClient.js';
 // go through?" (e.g. right after returning from checkout, or on app
 // resume/login while a payment was left pending) instead of only ever
 // passively waiting on the bill_update socket event.
+/**
+ * @swagger
+ * /api/bills/{id}:
+ *   get:
+ *     tags: [Bills]
+ *     summary: Fetch a bill, actively reconciling a pending online payment first
+ *     description: If the bill is pending with payment_method online, checks Razorpay for a captured payment before responding, so a client that just returned from checkout sees the up-to-date status without waiting on the webhook. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: The bill
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Bill' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       404:
+ *         description: Bill not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function GET(request, { params }) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

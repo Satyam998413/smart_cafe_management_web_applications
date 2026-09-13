@@ -13,6 +13,61 @@ import { ORDER_SELECT } from '@/lib/orderHelpers.js';
 // customer only ever sees their own orders; a manager sees everything; a
 // cook sees the unclaimed queue by default, or their own claims when
 // scope=mine.
+/**
+ * @swagger
+ * /api/orders/history:
+ *   get:
+ *     tags: [Orders]
+ *     summary: List orders, scoped by the caller role
+ *     description: Customer sees only their own orders; cook sees the unclaimed queue by default or their own claims with scope=mine; waiter sees the ready-for-delivery queue by default; manager/owner see everything. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: fromDate
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: toDate
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: mealType
+ *         schema: { type: string, enum: [breakfast, lunch, dinner, snack] }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *         description: Overrides the role default queue filter
+ *       - in: query
+ *         name: scope
+ *         schema: { type: string, enum: [mine] }
+ *         description: 'Cook only: restrict to orders assigned to the caller'
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Paginated order history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 orders:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Order' }
+ *                 totalPages: { type: integer }
+ *                 currentPage: { type: integer }
+ *                 totalOrders: { type: integer }
+ *                 hasNextPage: { type: boolean }
+ *                 hasPrevPage: { type: boolean }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function GET(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

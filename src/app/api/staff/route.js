@@ -9,6 +9,34 @@ import { STAFF_ROLES, SALT_ROUNDS } from '@/lib/staffHelpers.js';
 
 // GET /api/staff — ported from staffController.js's listStaff. Lists every
 // manager/cook/waiter account in the caller's org.
+/**
+ * @swagger
+ * /api/staff:
+ *   get:
+ *     tags: [Staff]
+ *     summary: List staff accounts in the caller organization
+ *     description: Owner or Manager only. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Staff accounts, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/User' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       403:
+ *         description: Caller is not an Owner or Manager
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function GET(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
@@ -32,6 +60,56 @@ export async function GET(request) {
 // by both Owner and Manager — the plan doc scopes this [owner]-only, but the
 // existing single-tenant deployment already relies on Manager creating Cook
 // accounts; narrowing to Owner-only would be a real capability regression.
+/**
+ * @swagger
+ * /api/staff:
+ *   post:
+ *     tags: [Staff]
+ *     summary: Create a staff account
+ *     description: Owner or Manager. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, password, role]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               password: { type: string, format: password }
+ *               role: { type: string, enum: [owner, manager, cook, waiter] }
+ *               spaceId: { type: string }
+ *     responses:
+ *       201:
+ *         description: Staff account created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/User' }
+ *       400:
+ *         description: Missing required fields, or an invalid role
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       403:
+ *         description: Caller is not an Owner or Manager
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       409:
+ *         description: Email or phone already in use
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

@@ -12,6 +12,29 @@ import { MENU_ITEM_SELECT, sortMenuItemOptions } from '@/lib/menuHelpers.js';
 // the time they browse the menu, so scope by it when present. Stays public
 // (no 401) for the no-token case since there's no anonymous public menu page
 // yet — that will need an explicit orgId/spaceId resolver once one exists.
+/**
+ * @swagger
+ * /api/menu:
+ *   get:
+ *     tags: [Menu]
+ *     summary: List menu items
+ *     description: Scoped to the caller organization when a valid bearer token is present. Public (no 401) when no token is sent - there is no per-organization anonymous menu page yet.
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Menu items, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/MenuItem' }
+ */
 export async function GET(request) {
   try {
     const auth = optionalAuth(request);
@@ -35,6 +58,51 @@ export async function GET(request) {
 // only — mutations were previously callable by anyone (no auth at all), now
 // gated same as menuRoutes.js's `router.post('/', requireAuth,
 // requireRole('manager'), ...)`.
+/**
+ * @swagger
+ * /api/menu:
+ *   post:
+ *     tags: [Menu]
+ *     summary: Create a menu item
+ *     description: Manager only. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, category, price]
+ *             properties:
+ *               name: { type: string }
+ *               category: { type: string }
+ *               price: { type: number }
+ *               description: { type: string }
+ *               imageUrl: { type: string }
+ *               isAvailable: { type: boolean, default: true }
+ *     responses:
+ *       201:
+ *         description: Menu item created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/MenuItem' }
+ *       400:
+ *         description: Missing name, category, or price
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       403:
+ *         description: Caller is not a Manager
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

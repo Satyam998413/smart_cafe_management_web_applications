@@ -14,7 +14,11 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const { label, number, sortOrder, iotEnabled, isBookable } = await request.json();
+    const { label, number, sortOrder, iotEnabled, isBookable, pricePerNight, description, maxOccupancy } =
+      await request.json();
+    if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
+      return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
+    }
 
     const { data: existing, error: fetchError } = await supabase
       .from('spaces')
@@ -32,6 +36,9 @@ export async function PATCH(request, { params }) {
     if (sortOrder !== undefined) updates.sort_order = sortOrder;
     if (iotEnabled !== undefined) updates.iot_enabled = iotEnabled;
     if (isBookable !== undefined) updates.is_bookable = isBookable;
+    if (pricePerNight !== undefined) updates.price_per_night = pricePerNight;
+    if (description !== undefined) updates.description = description;
+    if (maxOccupancy !== undefined) updates.max_occupancy = maxOccupancy;
 
     const { data, error } = await supabase.from('spaces').update(updates).eq('id', id).select('*').single();
     if (error) throw error;

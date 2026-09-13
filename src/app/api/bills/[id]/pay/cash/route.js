@@ -11,6 +11,42 @@ import { emitToRooms } from '@/lib/billingHelpers.js';
 // payWithCash. No gateway; just records the guest's choice so the Manager
 // screen can surface it (this route doesn't mark the bill paid — the
 // collect-cash route does, once cash is physically in hand).
+/**
+ * @swagger
+ * /api/bills/{id}/pay/cash:
+ *   post:
+ *     tags: [Bills]
+ *     summary: Record the guest choice to pay a bill with cash
+ *     description: Sets payment_method to cash on a pending bill so staff see it in their pending-cash-bills view. Does not mark the bill paid — see /api/bills/{id}/collect-cash for that. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cash payment choice recorded
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Bill' }
+ *       400:
+ *         description: Bill is already settled
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       404:
+ *         description: Bill not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request, { params }) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

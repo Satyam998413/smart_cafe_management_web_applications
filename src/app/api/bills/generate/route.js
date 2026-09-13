@@ -11,6 +11,40 @@ import { requireAuth } from '@/lib/auth.js';
 // space each was placed from. Staff-initiated (Owner/Manager) may pass
 // spaceId to bill an entire table/room's orders at once, across whichever
 // guest accounts ordered from it.
+/**
+ * @swagger
+ * /api/bills/generate:
+ *   post:
+ *     tags: [Bills]
+ *     summary: Aggregate unbilled orders into a new bill
+ *     description: Customer-initiated bills their own unbilled orders. Owner/Manager may pass spaceId to bill an entire table/room, across whichever guest accounts ordered from it. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               spaceId: { type: string, description: 'Owner/Manager only: bill every unbilled order from this space' }
+ *     responses:
+ *       201:
+ *         description: Bill created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Bill' }
+ *       400:
+ *         description: No unbilled orders found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

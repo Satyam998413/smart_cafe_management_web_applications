@@ -19,6 +19,46 @@ const STAFF_LOGIN_ROLES = ['master_admin', 'owner', 'manager', 'cook', 'waiter']
 
 // POST /api/auth/staff-login — ported from server/src/controllers/
 // staffAuthController.js.
+/**
+ * @swagger
+ * /api/auth/staff-login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Staff/manager/owner/cook/waiter login
+ *     description: Password login for every non-customer role. Returns a JWT carrying userId, role, orgId, and isMasterAdmin claims.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [identifier, password]
+ *             properties:
+ *               identifier: { type: string, description: 'Email or phone number', example: 'owner@cafe.test' }
+ *               password: { type: string, format: password }
+ *     responses:
+ *       200:
+ *         description: Staff login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 user: { $ref: '#/components/schemas/User' }
+ *                 token: { type: string }
+ *       400:
+ *         description: Identifier or password missing
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const limited = authRateLimit(request);
   if (limited) return limited;

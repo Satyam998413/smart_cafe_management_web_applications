@@ -24,9 +24,10 @@ export async function GET(request) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
     }
 
+    const includeImages = request.nextUrl.searchParams.get('includeImages') === '1';
     const { data, error } = await supabase
       .from('spaces')
-      .select('*')
+      .select(includeImages ? '*, space_images(*)' : '*')
       .eq('site_id', siteId)
       .order('sort_order', { ascending: true });
     if (error) throw error;
@@ -47,12 +48,27 @@ export async function POST(request) {
   if (roleError) return roleError;
 
   try {
-    const { siteId, parentSpaceId, kind, label, number, isBookable, iotEnabled, sortOrder } = await request.json();
+    const {
+      siteId,
+      parentSpaceId,
+      kind,
+      label,
+      number,
+      isBookable,
+      iotEnabled,
+      sortOrder,
+      pricePerNight,
+      description,
+      maxOccupancy
+    } = await request.json();
     if (!siteId || !kind || !label) {
       return NextResponse.json({ message: 'siteId, kind, and label are required' }, { status: 400 });
     }
     if (!SPACE_KINDS.includes(kind)) {
       return NextResponse.json({ message: `kind must be one of: ${SPACE_KINDS.join(', ')}` }, { status: 400 });
+    }
+    if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
+      return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
     }
     if (!(await assertSiteInOrg(siteId, auth.orgId))) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
@@ -68,7 +84,10 @@ export async function POST(request) {
         number: number || null,
         is_bookable: Boolean(isBookable),
         iot_enabled: Boolean(iotEnabled),
-        sort_order: sortOrder ?? 0
+        sort_order: sortOrder ?? 0,
+        price_per_night: pricePerNight ?? null,
+        description: description || null,
+        max_occupancy: maxOccupancy ?? null
       })
       .select('*')
       .single();

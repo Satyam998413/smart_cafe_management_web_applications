@@ -9,6 +9,48 @@ import { getRazorpayClient } from '@/lib/razorpayClient.js';
 // payWithRazorpay. Creates the Razorpay order for this bill's (possibly
 // coupon-discounted) total; the /api/webhooks/razorpay/bill-payment route
 // is what actually marks it paid once Razorpay confirms.
+/**
+ * @swagger
+ * /api/bills/{id}/pay/razorpay:
+ *   post:
+ *     tags: [Bills]
+ *     summary: Create a Razorpay order for a pending bill
+ *     description: Creates the Razorpay order for the bill (possibly coupon-discounted) total and returns the details the client checkout widget needs. The bill is only marked paid once the /api/webhooks/razorpay/bill-payment webhook confirms payment. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Razorpay order created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 razorpayOrderId: { type: string }
+ *                 amount: { type: integer, description: 'Amount in paise' }
+ *                 currency: { type: string, example: INR }
+ *                 keyId: { type: string }
+ *       400:
+ *         description: Bill is already settled
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       404:
+ *         description: Bill not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request, { params }) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;

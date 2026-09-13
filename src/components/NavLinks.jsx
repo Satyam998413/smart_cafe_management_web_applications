@@ -1,0 +1,84 @@
+'use client';
+
+import { useId } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  ClipboardList,
+  UtensilsCrossed,
+  Users,
+  MessageCircle,
+  MessagesSquare,
+  Sparkles,
+  Building2,
+  LayoutGrid,
+  Receipt,
+  Banknote,
+  Cpu,
+  Truck,
+  Wallet
+} from 'lucide-react';
+
+// Routed replacement for the old NavTabs.jsx (tab-state onClick/onChange) —
+// same role-conditional list and the same sliding-pill visual, but each
+// entry is a real <Link> and "active" is derived from the URL instead of
+// activeTab state.
+export default function NavLinks({ authRole, badges = {} }) {
+  const isCustomer = authRole === 'customer';
+  const isOwnerOrManager = authRole === 'owner' || authRole === 'manager';
+  const pathname = usePathname();
+  const layoutId = useId();
+
+    // Same order as flutter_app's home_screen.dart tab bar: AI first, then
+    // Menu, Order History, Chat, and whatever doesn't have a Flutter
+    // equivalent (Billing) last.
+  const links = isCustomer
+    ? [
+        { href: '/smart-ai', label: 'Smart AI', icon: Sparkles },
+        { href: '/menu', label: 'Menu', icon: UtensilsCrossed },
+        { href: '/orders', label: 'My Orders', icon: ClipboardList },
+        { href: '/chats', label: 'My Chat', icon: MessageCircle },
+        { href: '/billing', label: 'Billing', icon: Receipt }
+      ]
+    : [
+        { href: '/orders', label: 'Live Orders', icon: ClipboardList },
+        { href: '/menu', label: 'Menu Catalog', icon: UtensilsCrossed },
+        ...(isOwnerOrManager ? [{ href: '/sites', label: 'Sites', icon: Building2 }] : []),
+        ...(isOwnerOrManager ? [{ href: '/layout', label: 'Layout Builder', icon: LayoutGrid }] : []),
+        ...(isOwnerOrManager ? [{ href: '/staff', label: 'Staff', icon: Users }] : []),
+        ...(isOwnerOrManager ? [{ href: '/cash-bills', label: 'Cash Bills', icon: Banknote }] : []),
+        ...(isOwnerOrManager ? [{ href: '/devices', label: 'Devices', icon: Cpu }] : []),
+        ...(isOwnerOrManager ? [{ href: '/delivery', label: 'Delivery', icon: Truck }] : []),
+        ...(isOwnerOrManager ? [{ href: '/wallet', label: 'Wallet', icon: Wallet }] : []),
+        { href: '/chats', label: isOwnerOrManager ? 'Chat Oversight' : 'Customer Chats', icon: MessageCircle },
+        { href: '/team', label: 'Team Chat', icon: MessagesSquare }
+      ];
+
+  return (
+    <nav className="tabs-bar">
+      {links.map((t) => {
+        const Icon = t.icon;
+        const isActive = pathname === t.href || pathname.startsWith(`${t.href}/`);
+        return (
+          <Link key={t.href} href={t.href} className={`tab-button ${isActive ? 'active' : ''}`}>
+            {isActive && (
+              <motion.span
+                layoutId={layoutId}
+                className="tab-pill"
+                transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+              />
+            )}
+            <Icon size={16} strokeWidth={2} style={{ position: 'relative', zIndex: 1 }} />
+            <span style={{ position: 'relative', zIndex: 1 }}>{t.label}</span>
+            {badges[t.href] > 0 && (
+              <span className="nav-badge" style={{ position: 'relative', zIndex: 1 }}>
+                {badges[t.href]}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

@@ -12,6 +12,67 @@ import { checkBalanceThresholdNotification } from '@/lib/walletService.js';
 // Validation + the multi-row insert (order + order_items) happen atomically
 // inside the `place_order` Postgres function, since the Supabase JS client
 // has no client-side transaction API.
+/**
+ * @swagger
+ * /api/orders:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Place a new order
+ *     description: Debits one coin from the caller organization wallet (when it has one) and notifies cooks over the socket/push channels. Requires a bearer token.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [menuItemId, quantity]
+ *                   properties:
+ *                     menuItemId: { type: string }
+ *                     quantity: { type: integer, minimum: 1 }
+ *                     selectedOptions:
+ *                       type: array
+ *                       items: { type: object }
+ *               mealType: { type: string, enum: [breakfast, lunch, dinner, snack], description: 'Defaults from the current time of day when omitted' }
+ *               orderType: { type: string, enum: [pickup, dine_in, delivery], default: pickup }
+ *               tableNumber: { type: string, description: 'Required for dine_in when the caller has no QR-scanned space session' }
+ *               deliveryAddress: { type: string, description: 'Required for delivery' }
+ *               deliveryLat: { type: number }
+ *               deliveryLng: { type: number }
+ *               deliveryPincode: { type: string }
+ *     responses:
+ *       201:
+ *         description: Order placed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 order: { $ref: '#/components/schemas/Order' }
+ *       400:
+ *         description: Missing/invalid items, orderType, tableNumber, or deliveryAddress
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       402:
+ *         description: The organization wallet has no coins left
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
 export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
