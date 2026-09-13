@@ -1,3 +1,57 @@
+@import 'tailwindcss';
+
+/* M3-expressive tokens that don't reference existing vars below — plain
+   @theme so Tailwind both emits the CSS variable and generates utilities
+   (rounded-shape-*, shadow-elevation-*, ease-m3-*) from it. */
+@theme {
+  --shadow-elevation-1: 0 1px 3px rgba(28, 25, 23, 0.08), 0 1px 2px rgba(28, 25, 23, 0.05);
+  --shadow-elevation-2: 0 4px 12px rgba(28, 25, 23, 0.1), 0 2px 4px rgba(28, 25, 23, 0.06);
+  --shadow-elevation-3: 0 10px 28px rgba(28, 25, 23, 0.14), 0 4px 10px rgba(28, 25, 23, 0.08);
+  --shadow-elevation-4: 0 20px 44px rgba(28, 25, 23, 0.16), 0 8px 18px rgba(28, 25, 23, 0.1);
+  --shadow-elevation-5: 0 30px 60px rgba(28, 25, 23, 0.2), 0 14px 28px rgba(28, 25, 23, 0.12);
+
+  --radius-shape-xs: 6px;
+  --radius-shape-sm: 12px;
+  --radius-shape-md: 18px;
+  --radius-shape-lg: 24px;
+  --radius-shape-xl: 32px;
+  --radius-shape-full: 9999px;
+
+  --ease-m3-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-m3-emphasized: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/* Bridges Tailwind's color utilities (bg-surface, text-on-surface,
+   border-outline, ...) to the tenant-themeable CSS variables declared in
+   :root below — @theme inline resolves the var() at build time so a runtime
+   change to --accent-primary (org branding) still applies, per Tailwind's
+   docs for referencing existing custom properties from @theme. */
+@theme inline {
+  --color-surface: var(--bg-page);
+  --color-surface-card: var(--bg-card-solid);
+  --color-surface-container: var(--bg-surface-elevated);
+  --color-on-surface: var(--text-primary);
+  --color-on-surface-variant: var(--text-secondary);
+  --color-on-surface-muted: var(--text-muted);
+  --color-outline: var(--border);
+  --color-outline-strong: var(--border-strong);
+  --color-primary: var(--accent-primary);
+  --color-secondary: var(--accent-secondary);
+  --color-primary-container: var(--accent-wash);
+  --color-on-primary: var(--text-on-accent);
+}
+
+/* Everything below lives in the `components` cascade layer (Tailwind's own
+   layer order is theme, base, components, utilities) so that new Tailwind
+   utility classes placed alongside these existing classes on the same
+   element — e.g. `className="glass-card rounded-shape-lg"` — can actually
+   override them. Per the CSS cascade-layers spec, unlayered rules always
+   beat layered ones regardless of source order, so leaving this stylesheet
+   unlayered would make every Tailwind utility a silent no-op wherever it
+   overlaps with a property already set here. This wrap changes nothing
+   about how these rules apply to each other (same layer, same order). */
+@layer components {
+
 :root {
   --bg-page: #faf7f2;
   --bg-surface: #ffffff;
@@ -1227,3 +1281,5 @@ select:focus-visible,
 .capability-row:first-of-type {
   border-top: none;
 }
+
+} /* end @layer components */

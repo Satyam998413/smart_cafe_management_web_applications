@@ -1,4 +1,5 @@
 import './globals.css';
+import BackgroundEffect from '@/components/BackgroundEffect';
 
 export const metadata = {
   title: 'Smart Cafe Manager',
@@ -8,7 +9,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <BackgroundEffect />
+        {children}
+      </body>
     </html>
   );
 }

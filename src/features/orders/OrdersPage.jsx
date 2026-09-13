@@ -6,6 +6,7 @@ import { Search, PackageOpen } from 'lucide-react';
 import OrderCard from '@/components/OrderCard';
 import SegmentedToggle from '@/components/ui/SegmentedToggle';
 import { SkeletonGrid } from '@/components/ui/Skeleton';
+import TiltCard from '@/components/ui/TiltCard';
 
 // Ported unchanged from react_app/src/pages/OrdersPage.jsx.
 const STATUS_OPTIONS = ['all', 'pending', 'preparing', 'ready', 'completed', 'cancelled'];
@@ -58,36 +59,36 @@ export default function OrdersPage({ orders, loading, authRole, onClaim, onStatu
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <motion.section className="stats-grid" variants={gridVariants} initial="hidden" animate="show">
-        <motion.div className="glass-card stat-card" variants={cardVariants}>
+        <TiltCard className="glass-card stat-card rounded-shape-lg shadow-elevation-2" variants={cardVariants}>
           <span className="stat-value" style={{ color: 'var(--status-pending)' }}>
             {pendingCount}
           </span>
           <span className="stat-label">Pending Orders</span>
-        </motion.div>
-        <motion.div className="glass-card stat-card" variants={cardVariants}>
+        </TiltCard>
+        <TiltCard className="glass-card stat-card rounded-shape-lg shadow-elevation-2" variants={cardVariants}>
           <span className="stat-value" style={{ color: 'var(--status-preparing)' }}>
             {preparingCount}
           </span>
           <span className="stat-label">Preparing in Kitchen</span>
-        </motion.div>
-        <motion.div className="glass-card stat-card" variants={cardVariants}>
+        </TiltCard>
+        <TiltCard className="glass-card stat-card rounded-shape-lg shadow-elevation-2" variants={cardVariants}>
           <span className="stat-value" style={{ color: 'var(--status-ready)' }}>
             {readyCount}
           </span>
           <span className="stat-label">Ready for Pickup</span>
-        </motion.div>
-        <motion.div className="glass-card stat-card" variants={cardVariants}>
+        </TiltCard>
+        <TiltCard className="glass-card stat-card rounded-shape-lg shadow-elevation-2" variants={cardVariants}>
           <span className="stat-value" style={{ color: 'var(--status-completed)' }}>
             ${totalRevenue.toFixed(2)}
           </span>
           <span className="stat-label">Total Revenue ({completedOrders.length} orders)</span>
-        </motion.div>
-        <motion.div className="glass-card stat-card" variants={cardVariants}>
+        </TiltCard>
+        <TiltCard className="glass-card stat-card rounded-shape-lg shadow-elevation-2" variants={cardVariants}>
           <span className="stat-value" style={{ color: 'var(--accent-primary)' }}>
             ${avgOrderValue.toFixed(2)}
           </span>
           <span className="stat-label">Avg Order Value</span>
-        </motion.div>
+        </TiltCard>
       </motion.section>
 
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>

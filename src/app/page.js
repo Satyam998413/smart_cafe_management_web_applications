@@ -22,6 +22,7 @@ import PendingCashBillsPage from '@/features/billing/PendingCashBillsPage';
 import IotDevicesPage from '@/features/iot/IotDevicesPage';
 import DeliveryPage from '@/features/delivery/DeliveryPage';
 import WalletPage from '@/features/wallet/WalletPage';
+import { springs } from '@/lib/motionTokens';
 
 // Ported from react_app/src/App.jsx — the dashboard shell that owns every
 // piece of cross-page state (auth, cart, orders, menu, the one shared
@@ -351,8 +352,8 @@ export default function Home() {
             key={activeTab}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: -12, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
+            transition={springs.page}
           >
             {activeTab === 'orders' && (
               <OrdersPage

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import supabase from './supabaseClient.js';
 import { createMockQueryBuilder } from '@/testUtils/mockQueryBuilder.js';
-import { grantSignupWallet, markCoinPurchasePaid } from './walletService.js';
+import { grantSignupWallet, markCoinPurchasePaid, checkBalanceThresholdNotification } from './walletService.js';
 
 vi.mock('./supabaseClient.js', () => ({ default: { from: vi.fn(), rpc: vi.fn() } }));
 
@@ -83,5 +83,73 @@ describe('markCoinPurchasePaid', () => {
 
     expect(result).toBeNull();
     expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkBalanceThresholdNotification', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('returns null when the org has no wallet', async () => {
+    supabase.from.mockReturnValue(createMockQueryBuilder({ data: null, error: null }));
+
+    const result = await checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 });
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when the balance stays clear of both thresholds', async () => {
+    // 500 -> 499: nowhere near 50 or 0.
+    supabase.from.mockReturnValue(createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 499 }, error: null }));
+
+    const result = await checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 });
+
+    expect(result).toBeNull();
+  });
+
+  it('inserts a low_coin_balance notification targeted at manager exactly on the 50 -> 49 crossing', async () => {
+    const walletBuilder = createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 49 }, error: null });
+    const insertBuilder = createMockQueryBuilder({
+      data: { id: 'notif-1', org_id: 'org-1', target_role: 'manager', type: 'low_coin_balance' },
+      error: null
+    });
+    supabase.from.mockReturnValueOnce(walletBuilder).mockReturnValueOnce(insertBuilder);
+
+    const result = await checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 });
+
+    expect(insertBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ org_id: 'org-1', target_role: 'manager', type: 'low_coin_balance' })
+    );
+    expect(result).toMatchObject({ id: 'notif-1', type: 'low_coin_balance' });
+  });
+
+  it('does not re-notify once already below the low-balance threshold (no crossing this write)', async () => {
+    // 20 -> 19: already under 50 before this debit, so this isn't a crossing.
+    supabase.from.mockReturnValue(createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 19 }, error: null }));
+
+    const result = await checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 });
+
+    expect(result).toBeNull();
+  });
+
+  it('inserts a zero_coin_balance notification targeted at owner exactly on the 1 -> 0 crossing', async () => {
+    const walletBuilder = createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 0 }, error: null });
+    const insertBuilder = createMockQueryBuilder({
+      data: { id: 'notif-2', org_id: 'org-1', target_role: 'owner', type: 'zero_coin_balance' },
+      error: null
+    });
+    supabase.from.mockReturnValueOnce(walletBuilder).mockReturnValueOnce(insertBuilder);
+
+    const result = await checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 });
+
+    expect(insertBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ org_id: 'org-1', target_role: 'owner', type: 'zero_coin_balance' })
+    );
+    expect(result).toMatchObject({ id: 'notif-2', type: 'zero_coin_balance' });
+  });
+
+  it('propagates a wallet lookup failure', async () => {
+    supabase.from.mockReturnValue(createMockQueryBuilder({ data: null, error: new Error('db down') }));
+
+    await expect(checkBalanceThresholdNotification({ orgId: 'org-1', amount: 1 })).rejects.toThrow('db down');
   });
 });

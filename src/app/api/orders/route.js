@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
-import { serializeOrder } from '@/lib/serializers.js';
+import { serializeOrder, serializeNotification } from '@/lib/serializers.js';
 import { requireAuth } from '@/lib/auth.js';
 import { notifyRole } from '@/lib/pushNotifications.js';
 import { getIo } from '@/lib/socketServer.js';
 import { ORDER_SELECT, emitToRooms } from '@/lib/orderHelpers.js';
+import { checkBalanceThresholdNotification } from '@/lib/walletService.js';
 
 // POST /api/orders — ported from orderController.js's placeOrder.
 // Validation + the multi-row insert (order + order_items) happen atomically
@@ -120,6 +121,18 @@ export async function POST(request) {
           { message: 'This organization has no coins left. Ask an Owner or Manager to recharge.' },
           { status: 402 }
         );
+      }
+
+      // Balance-threshold notification (plan Phase 1B.b) — best-effort: a
+      // failure here shouldn't fail an order that already succeeded and was
+      // already paid for.
+      try {
+        const notification = await checkBalanceThresholdNotification({ orgId: auth.orgId, amount: 1 });
+        if (notification) {
+          emitToRooms(io, [`role-${notification.target_role}`], 'notification', serializeNotification(notification));
+        }
+      } catch (notifyError) {
+        logger.error('Failed to check/create balance threshold notification', { error: notifyError.message });
       }
     }
 

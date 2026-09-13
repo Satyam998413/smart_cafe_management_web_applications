@@ -2,12 +2,14 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import supabase from '@/lib/supabaseClient.js';
 import { notifyRole } from '@/lib/pushNotifications.js';
+import { getIo } from '@/lib/socketServer.js';
 import { createMockQueryBuilder } from '@/testUtils/mockQueryBuilder.js';
 import { authHeader } from '@/testUtils/authTestHelpers.js';
 import { POST } from './route.js';
 
 vi.mock('@/lib/supabaseClient.js', () => ({ default: { from: vi.fn(), rpc: vi.fn() } }));
 vi.mock('@/lib/pushNotifications.js', () => ({ notifyRole: vi.fn(), notifyUser: vi.fn() }));
+vi.mock('@/lib/socketServer.js', () => ({ getIo: vi.fn() }));
 
 const URL = 'http://localhost/api/orders';
 const jsonRequest = (body, headers = {}) =>
@@ -87,11 +89,13 @@ describe('POST /api/orders', () => {
   it('stamps org_id, debits one coin, and returns the order when the org has balance', async () => {
     supabase.rpc.mockResolvedValueOnce({ data: 'order-1', error: null }); // place_order
     const stampBuilder = createMockQueryBuilder({ data: null, error: null });
+    // 500 -> 499 post-debit: nowhere near a threshold, so no notification lookup insert.
+    const walletBuilder = createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 499 }, error: null });
     const fetchBuilder = createMockQueryBuilder({
       data: { id: 'order-1', user_id: 'user-1', items: [] },
       error: null
     });
-    supabase.from.mockReturnValueOnce(stampBuilder).mockReturnValueOnce(fetchBuilder);
+    supabase.from.mockReturnValueOnce(stampBuilder).mockReturnValueOnce(walletBuilder).mockReturnValueOnce(fetchBuilder);
     supabase.rpc.mockResolvedValueOnce({ data: null, error: null }); // decrement_wallet_balance
 
     const res = await POST(jsonRequest({ items: VALID_ITEMS }, authHeader({ orgId: 'org-1' })));
@@ -112,5 +116,72 @@ describe('POST /api/orders', () => {
 
     expect(res.status).toBe(402);
     expect(deleteBuilder.delete).toHaveBeenCalled();
+  });
+
+  it('inserts a low_coin_balance notification and emits it to role-manager on the 50 -> 49 crossing', async () => {
+    supabase.rpc.mockResolvedValueOnce({ data: 'order-1', error: null }); // place_order
+    const stampBuilder = createMockQueryBuilder({ data: null, error: null });
+    const walletBuilder = createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 49 }, error: null });
+    const insertBuilder = createMockQueryBuilder({
+      data: { id: 'notif-1', org_id: 'org-1', target_role: 'manager', type: 'low_coin_balance', message: 'low', is_read: false },
+      error: null
+    });
+    const fetchBuilder = createMockQueryBuilder({ data: { id: 'order-1', user_id: 'user-1', items: [] }, error: null });
+    supabase.from
+      .mockReturnValueOnce(stampBuilder)
+      .mockReturnValueOnce(walletBuilder)
+      .mockReturnValueOnce(insertBuilder)
+      .mockReturnValueOnce(fetchBuilder);
+    supabase.rpc.mockResolvedValueOnce({ data: null, error: null }); // decrement_wallet_balance
+    const emit = vi.fn();
+    const to = vi.fn(() => ({ emit }));
+    getIo.mockReturnValue({ to });
+
+    const res = await POST(jsonRequest({ items: VALID_ITEMS }, authHeader({ orgId: 'org-1' })));
+
+    expect(res.status).toBe(201);
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ target_role: 'manager', type: 'low_coin_balance' }));
+    expect(to).toHaveBeenCalledWith(['role-manager']);
+    expect(emit).toHaveBeenCalledWith('notification', expect.objectContaining({ type: 'low_coin_balance' }));
+  });
+
+  it('inserts a zero_coin_balance notification and emits it to role-owner on the 1 -> 0 crossing', async () => {
+    supabase.rpc.mockResolvedValueOnce({ data: 'order-1', error: null }); // place_order
+    const stampBuilder = createMockQueryBuilder({ data: null, error: null });
+    const walletBuilder = createMockQueryBuilder({ data: { id: 'wallet-1', balance_coins: 0 }, error: null });
+    const insertBuilder = createMockQueryBuilder({
+      data: { id: 'notif-2', org_id: 'org-1', target_role: 'owner', type: 'zero_coin_balance', message: 'zero', is_read: false },
+      error: null
+    });
+    const fetchBuilder = createMockQueryBuilder({ data: { id: 'order-1', user_id: 'user-1', items: [] }, error: null });
+    supabase.from
+      .mockReturnValueOnce(stampBuilder)
+      .mockReturnValueOnce(walletBuilder)
+      .mockReturnValueOnce(insertBuilder)
+      .mockReturnValueOnce(fetchBuilder);
+    supabase.rpc.mockResolvedValueOnce({ data: null, error: null }); // decrement_wallet_balance
+    const emit = vi.fn();
+    const to = vi.fn(() => ({ emit }));
+    getIo.mockReturnValue({ to });
+
+    const res = await POST(jsonRequest({ items: VALID_ITEMS }, authHeader({ orgId: 'org-1' })));
+
+    expect(res.status).toBe(201);
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ target_role: 'owner', type: 'zero_coin_balance' }));
+    expect(to).toHaveBeenCalledWith(['role-owner']);
+    expect(emit).toHaveBeenCalledWith('notification', expect.objectContaining({ type: 'zero_coin_balance' }));
+  });
+
+  it('does not fail the order when the threshold-notification check itself errors', async () => {
+    supabase.rpc.mockResolvedValueOnce({ data: 'order-1', error: null }); // place_order
+    const stampBuilder = createMockQueryBuilder({ data: null, error: null });
+    const walletBuilder = createMockQueryBuilder({ data: null, error: new Error('db down') });
+    const fetchBuilder = createMockQueryBuilder({ data: { id: 'order-1', user_id: 'user-1', items: [] }, error: null });
+    supabase.from.mockReturnValueOnce(stampBuilder).mockReturnValueOnce(walletBuilder).mockReturnValueOnce(fetchBuilder);
+    supabase.rpc.mockResolvedValueOnce({ data: null, error: null }); // decrement_wallet_balance
+
+    const res = await POST(jsonRequest({ items: VALID_ITEMS }, authHeader({ orgId: 'org-1' })));
+
+    expect(res.status).toBe(201);
   });
 });

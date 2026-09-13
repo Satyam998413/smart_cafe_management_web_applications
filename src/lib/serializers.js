@@ -344,6 +344,20 @@ export const serializeDeliveryRider = (rider) => {
   };
 };
 
+export const serializeNotification = (notification) => {
+  if (!notification) return null;
+  return {
+    id: notification.id,
+    orgId: notification.org_id,
+    targetRole: notification.target_role,
+    targetUserId: notification.target_user_id,
+    type: notification.type,
+    message: notification.message,
+    isRead: notification.is_read,
+    createdAt: notification.created_at
+  };
+};
+
 export const serializeDeliveryZone = (zone) => {
   if (!zone) return null;
   return {
