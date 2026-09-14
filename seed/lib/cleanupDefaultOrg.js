@@ -1,66 +1,108 @@
-import { DEFAULT_ORG, DEFAULT_USERS } from '../constants.js';
-
-const SEED_USER_EMAILS = DEFAULT_USERS.map((user) => user.email);
+import { DEFAULT_ORG, DEFAULT_USERS, DEFAULT_HOTEL_ORG, DEFAULT_HOTEL_USERS } from '../constants.js';
 
 /**
- * Removes exactly what seed.js creates — scoped to the default org (looked
- * up by its unique contact_email, not a hardcoded id) plus every seed user
- * email. Used by both clean.js directly and by seed.js (to make reseeding
- * idempotent) so the two scripts can never drift on what "default data"
- * means.
+ * Removes exactly what seed.js creates for one organization — scoped to it
+ * by its unique contact_email, not a hardcoded id — plus every seed user
+ * email for that org. Used by both cleanupDefaultOrgData/
+ * cleanupDefaultHotelData below (so seed.js/clean.js can never drift on
+ * what "default data" means) and, transitively, by seed.js itself to make
+ * reseeding idempotent.
  *
  * Deliberately does NOT truncate whole tables (this is a shared multi-tenant
  * database — other orgs' rows must survive) and does NOT touch coin_plans
  * (platform-wide catalog, not org-scoped, possibly referenced by other
  * orgs' coin_purchases).
  *
- * Only `menu_items` and `users` are deleted explicitly before the
- * `organizations` row: their org_id foreign keys have no ON DELETE CASCADE
- * (server/supabase/schema.sql), so they'd otherwise block the delete.
- * Everything else the org owns (sites -> spaces, wallets ->
- * wallet_transactions, delivery_riders, delivery_zones, devices) cascades
- * away automatically once the organizations row is deleted.
+ * Deletion order matters and has bitten this project twice already:
+ *   - `devices`/`bookings`/`menu_items`.org_id have no ON DELETE CASCADE
+ *     (server/supabase/schema.sql for menu_items; supabase/migrations/
+ *     0006 and 0005 for devices/bookings), so any of them still existing
+ *     would block the final `organizations` delete.
+ *   - `device_commands.issued_by`, `bookings.customer_id`, and
+ *     `audit_log.actor_id` all reference `users` with no cascade, so those
+ *     rows must be gone *before* deleting `users`, not after — deleting
+ *     `devices` first cascades away device_states/device_commands (both ON
+ *     DELETE CASCADE from devices), and deleting `bookings`/`audit_log`
+ *     (scoped by org_id, which both have) directly removes the
+ *     customer_id/actor_id references, which is why all three come before
+ *     the `users` delete below. The audit_log FK was hit for real the first
+ *     time this ran against an org some earlier session had already
+ *     exercised through the actual app (Master Admin actions, IoT commands,
+ *     etc. all write audit_log rows) — reseeding is supposed to fully reset
+ *     the org, so clearing its own audit trail along with everything else
+ *     it owns is correct here, not a loss of real history.
+ * Everything else an org owns (sites -> spaces -> space_images, wallets ->
+ * wallet_transactions, delivery_riders, delivery_zones, device_counters)
+ * cascades away automatically once the `organizations` row itself goes.
  */
-export async function cleanupDefaultOrgData(client) {
-  const summary = { menuItems: 0, users: 0, organizations: 0 };
+async function cleanupOrgData(client, { org, userEmails }) {
+  const summary = { devices: 0, bookings: 0, auditLog: 0, menuItems: 0, users: 0, organizations: 0 };
 
-  const { data: org, error: orgLookupError } = await client
+  const { data: orgRow, error: orgLookupError } = await client
     .from('organizations')
     .select('id')
-    .eq('contact_email', DEFAULT_ORG.contactEmail)
+    .eq('contact_email', org.contactEmail)
     .maybeSingle();
   if (orgLookupError) throw orgLookupError;
 
-  if (org) {
-    const { count: menuItemsDeleted, error: menuError } = await client
-      .from('menu_items')
-      .delete({ count: 'exact' })
-      .eq('org_id', org.id);
+  if (orgRow) {
+    const { count: devicesDeleted, error: devicesError } = await client.from('devices').delete({ count: 'exact' }).eq('org_id', orgRow.id);
+    if (devicesError) throw devicesError;
+    summary.devices = devicesDeleted || 0;
+
+    const { count: bookingsDeleted, error: bookingsError } = await client.from('bookings').delete({ count: 'exact' }).eq('org_id', orgRow.id);
+    if (bookingsError) throw bookingsError;
+    summary.bookings = bookingsDeleted || 0;
+
+    const { count: menuItemsDeleted, error: menuError } = await client.from('menu_items').delete({ count: 'exact' }).eq('org_id', orgRow.id);
     if (menuError) throw menuError;
     summary.menuItems = menuItemsDeleted || 0;
 
-    const { count: orgUsersDeleted, error: usersError } = await client
-      .from('users')
-      .delete({ count: 'exact' })
-      .eq('org_id', org.id);
+    const { count: auditLogDeleted, error: auditLogError } = await client.from('audit_log').delete({ count: 'exact' }).eq('org_id', orgRow.id);
+    if (auditLogError) throw auditLogError;
+    summary.auditLog = auditLogDeleted || 0;
+
+    const { count: orgUsersDeleted, error: usersError } = await client.from('users').delete({ count: 'exact' }).eq('org_id', orgRow.id);
     if (usersError) throw usersError;
     summary.users += orgUsersDeleted || 0;
 
-    const { error: orgDeleteError } = await client.from('organizations').delete().eq('id', org.id);
+    const { error: orgDeleteError } = await client.from('organizations').delete().eq('id', orgRow.id);
     if (orgDeleteError) throw orgDeleteError;
     summary.organizations = 1;
   }
 
-  // master_admin's org_id is null (platform-level), so it's never caught by
-  // the org-scoped delete above — remove it (and any other null-org_id seed
-  // account) by its known email instead.
+  // A platform-level account (org_id null, e.g. master_admin) is never
+  // caught by the org-scoped delete above — remove it (and any other
+  // null-org_id seed account) by its known email instead. No-op for a user
+  // list with no such account.
+  //
+  // Tolerant of failure here, unlike every delete above: master_admin acts
+  // *across* orgs (audit_log rows like "organization_created" reference
+  // whichever org was acted on, not this demo one), so it can carry real
+  // platform-wide audit history this cleanup has no business deleting —
+  // confirmed live: this exact account has audit_log rows pointing at two
+  // real organizations, neither the demo cafe/hotel org. When that's the
+  // case, leave the existing row in place (seed.js's seedUsers skips
+  // re-inserting an email that already exists) rather than aborting the
+  // whole reseed over an account this function was never meant to touch.
   const { count: platformUsersDeleted, error: platformUsersError } = await client
     .from('users')
     .delete({ count: 'exact' })
-    .in('email', SEED_USER_EMAILS)
+    .in('email', userEmails)
     .is('org_id', null);
-  if (platformUsersError) throw platformUsersError;
-  summary.users += platformUsersDeleted || 0;
+  if (platformUsersError) {
+    console.warn(`Could not remove platform-level seed user(s) (${platformUsersError.message}) — leaving existing row(s) in place.`);
+  } else {
+    summary.users += platformUsersDeleted || 0;
+  }
 
-  return { orgId: org?.id ?? null, ...summary };
+  return { orgId: orgRow?.id ?? null, ...summary };
+}
+
+export async function cleanupDefaultOrgData(client) {
+  return cleanupOrgData(client, { org: DEFAULT_ORG, userEmails: DEFAULT_USERS.map((u) => u.email) });
+}
+
+export async function cleanupDefaultHotelData(client) {
+  return cleanupOrgData(client, { org: DEFAULT_HOTEL_ORG, userEmails: DEFAULT_HOTEL_USERS.map((u) => u.email) });
 }

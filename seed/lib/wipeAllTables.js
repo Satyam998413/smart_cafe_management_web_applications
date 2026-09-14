@@ -9,6 +9,10 @@
 const TABLES = [
   { table: 'device_states', matchColumn: 'updated_at' },
   { table: 'device_commands', matchColumn: 'created_at' },
+  // device_counters has no timestamp column at all (org_id, next_value) —
+  // org_id is its NOT NULL primary key, so it works as the "match
+  // everything" filter the same way a created_at column does elsewhere.
+  { table: 'device_counters', matchColumn: 'org_id' },
   { table: 'order_item_options', matchColumn: 'created_at' },
   { table: 'order_items', matchColumn: 'created_at' },
   { table: 'order_messages', matchColumn: 'created_at' },
@@ -20,6 +24,7 @@ const TABLES = [
   { table: 'coupon_redemptions', matchColumn: 'redeemed_at' },
   { table: 'coin_purchases', matchColumn: 'created_at' },
   { table: 'bills', matchColumn: 'created_at' },
+  { table: 'bookings', matchColumn: 'created_at' },
   { table: 'delivery_riders', matchColumn: 'created_at' },
   { table: 'delivery_zones', matchColumn: 'created_at' },
   { table: 'devices', matchColumn: 'created_at' },
@@ -35,6 +40,7 @@ const TABLES = [
   { table: 'coupon_codes', matchColumn: 'created_at' },
   { table: 'coin_plans', matchColumn: 'created_at' },
   { table: 'users', matchColumn: 'created_at' },
+  { table: 'space_images', matchColumn: 'created_at' },
   { table: 'spaces', matchColumn: 'created_at' },
   { table: 'sites', matchColumn: 'created_at' },
   { table: 'organizations', matchColumn: 'created_at' }

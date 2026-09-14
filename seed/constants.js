@@ -96,6 +96,118 @@ export const DEFAULT_MENU_ITEMS = [
 // option groups the app's menu-editor UI already knows how to render.
 export const BEVERAGE_OPTION_ITEM_NAMES = ['Cappuccino', 'Latte', 'Iced Coffee'];
 
+// ---------------------------------------------------------------------------
+// Hotel demo data — a second, independent organization (premise_type
+// 'hotel') so the seed covers both premise types the app supports, not just
+// the cafe/restaurant one above. Kept as its own org rather than added onto
+// DEFAULT_ORG since a cafe and a hotel are different tenants in real usage;
+// having two lets `npm run seed` demonstrate the room/booking/IoT-per-room
+// features without disturbing the existing cafe demo at all.
+// ---------------------------------------------------------------------------
+export const DEFAULT_HOTEL_ORG = {
+  name: 'Smart Stay Hotel Demo',
+  premiseType: 'hotel',
+  contactEmail: 'contact@smartstay.test',
+  planTier: 'standard'
+};
+
+export const DEFAULT_HOTEL_SITE = {
+  name: 'Smart Stay Hotel - Main Building',
+  address: 'Residency Road, Bengaluru, Karnataka, India',
+  lat: 12.9719,
+  lng: 77.6412
+};
+
+const ROOM_IMAGE_POOL = [
+  'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&auto=format&fit=crop'
+];
+
+// Three floors, each with a handful of rooms of varying type/price —
+// `parent_space_id` (set in seed.js once the floor row exists) puts every
+// room under its floor, same floor->table nesting DEFAULT_SPACES already
+// uses for the cafe, just with kind='room' and the hotel-only columns
+// (price_per_night/description/max_occupancy) migration 0005 added.
+export const DEFAULT_HOTEL_FLOORS = [
+  {
+    label: 'Ground Floor',
+    rooms: [
+      { number: '101', roomType: 'Standard Single', pricePerNight: 2200, maxOccupancy: 1, description: 'Cozy single room, courtyard view.', images: [ROOM_IMAGE_POOL[0]] },
+      { number: '102', roomType: 'Deluxe Twin', pricePerNight: 3200, maxOccupancy: 2, description: 'Garden-facing deluxe room with twin beds.', images: [ROOM_IMAGE_POOL[1], ROOM_IMAGE_POOL[2]] },
+      { number: '103', roomType: 'Deluxe Twin', pricePerNight: 3200, maxOccupancy: 2, description: 'Garden-facing deluxe room with twin beds.', images: [ROOM_IMAGE_POOL[1]] }
+    ]
+  },
+  {
+    label: 'First Floor',
+    rooms: [
+      { number: '201', roomType: 'Executive Suite', pricePerNight: 5800, maxOccupancy: 3, description: 'Spacious suite with a separate sitting area.', images: [ROOM_IMAGE_POOL[3], ROOM_IMAGE_POOL[4]] },
+      { number: '202', roomType: 'Deluxe Twin', pricePerNight: 3400, maxOccupancy: 2, description: 'City-view deluxe room with twin beds.', images: [ROOM_IMAGE_POOL[2]] },
+      { number: '203', roomType: 'Standard Single', pricePerNight: 2400, maxOccupancy: 1, description: 'Compact single room, city view.', images: [ROOM_IMAGE_POOL[0]] }
+    ]
+  },
+  {
+    label: 'Second Floor',
+    rooms: [
+      { number: '301', roomType: 'Presidential Suite', pricePerNight: 9500, maxOccupancy: 4, description: 'Top-floor suite with a private balcony.', images: [ROOM_IMAGE_POOL[5], ROOM_IMAGE_POOL[3]] },
+      { number: '302', roomType: 'Executive Suite', pricePerNight: 6000, maxOccupancy: 3, description: 'Corner suite with a separate sitting area.', images: [ROOM_IMAGE_POOL[4]] }
+    ]
+  }
+];
+
+// Typical in-room electrical equipment — the same lamp/fan/ac/other
+// taxonomy the Devices dashboard's registration form already offers.
+// `quantity` mirrors POST /api/iot-devices's own quantity field: one row
+// per physical device, not a count column on a single row.
+export const DEFAULT_ROOM_EQUIPMENT = [
+  { type: 'lamp', name: 'Bedside Lamp', quantity: 2 },
+  { type: 'fan', name: 'Ceiling Fan', quantity: 1 },
+  { type: 'ac', name: 'Split AC', quantity: 1 },
+  { type: 'other', name: 'Room TV', quantity: 1 }
+];
+
+// Placed on the floor-plan canvas at fixed spots per room (percentage x/y),
+// cycling through whichever devices a room actually has — so opening
+// Devices -> Floor Plan for any seeded room shows a populated layout
+// instead of an empty canvas, with the last device or two left in the
+// "unplaced" tray to also demonstrate that state.
+export const DEFAULT_EQUIPMENT_POSITIONS = [
+  { posX: 15, posY: 20 },
+  { posX: 85, posY: 20 },
+  { posX: 50, posY: 15 },
+  { posX: 15, posY: 80 }
+];
+
+export const DEFAULT_HOTEL_USERS = [
+  { role: 'owner', name: 'Hotel Owner Demo', email: 'owner@smartstay.test', phone: '+91-90000-20001', password: 'Owner@123' },
+  { role: 'manager', name: 'Front Desk Manager', email: 'manager@smartstay.test', phone: '+91-90000-20002', password: 'Manager@123' },
+  { role: 'cook', name: 'Room Service Chef', email: 'chef@smartstay.test', phone: '+91-90000-20003', password: 'Cook@123' },
+  { role: 'waiter', name: 'Housekeeping Staff', email: 'housekeeping@smartstay.test', phone: '+91-90000-20004', password: 'Waiter@123' },
+  { role: 'customer', name: 'Ananya Rao', email: 'ananya.rao@smartstay.test', phone: '+91-90000-30001', password: null },
+  { role: 'customer', name: 'Vikram Nair', email: 'vikram.nair@smartstay.test', phone: '+91-90000-30002', password: null },
+  { role: 'customer', name: 'Fatima Sheikh', email: 'fatima.sheikh@smartstay.test', phone: '+91-90000-30003', password: null }
+];
+
+export const DEFAULT_HOTEL_WALLET = { balanceCoins: 800, lowBalanceThreshold: 100 };
+
+// Bookings reference a room by [floorIndex, roomIndex] into
+// DEFAULT_HOTEL_FLOORS and a guest by index into the customer entries of
+// DEFAULT_HOTEL_USERS (resolved to real ids in seed.js once both exist) —
+// dates are relative to seed time (checkInOffsetDays from today) so the
+// demo data never goes stale. Deliberately covers every status the
+// `bookings.status` check constraint allows, so the Bookings page has at
+// least one example of each.
+export const DEFAULT_BOOKINGS = [
+  { roomRef: [0, 1], guestIndex: 0, checkInOffsetDays: -5, nights: 3, numGuests: 2, status: 'checked_out' },
+  { roomRef: [0, 2], guestIndex: 1, checkInOffsetDays: 0, nights: 2, numGuests: 1, status: 'checked_in' },
+  { roomRef: [1, 0], guestIndex: 2, checkInOffsetDays: 3, nights: 4, numGuests: 3, status: 'confirmed' },
+  { roomRef: [1, 1], guestIndex: 0, checkInOffsetDays: 7, nights: 1, numGuests: 2, status: 'pending_payment' },
+  { roomRef: [2, 0], guestIndex: 1, checkInOffsetDays: -10, nights: 2, numGuests: 2, status: 'cancelled' }
+];
+
 export const BEVERAGE_OPTION_GROUP_DEFINITIONS = [
   {
     name: 'Sugar Level',
