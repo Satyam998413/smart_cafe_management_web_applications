@@ -37,6 +37,7 @@
   --color-outline-strong: var(--border-strong);
   --color-primary: var(--accent-primary);
   --color-secondary: var(--accent-secondary);
+  --color-tertiary: var(--accent-tertiary);
   --color-primary-container: var(--accent-wash);
   --color-on-primary: var(--text-on-accent);
 }
@@ -65,6 +66,7 @@
 
   --accent-primary: #ff7a00;
   --accent-secondary: #e06900;
+  --accent-tertiary: #ffaa55;
   --accent-indigo: #6366f1;
   --accent-emerald: #10b981;
   --accent-soft: #ffaa55;

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Lock, User, Eye, EyeOff, Sparkles, Activity, Server, Database, KeyRound, Cpu, ShieldAlert } from 'lucide-react';
 import { API_BASE } from '@/lib/apiClient';
 import Button from '@/components/ui/Button';
 import ThemeToggle from '@/components/ThemeToggle';
+import { initAppTheme } from '@/lib/themeManager';
 
 export default function AdminLoginPage({ onLoginSuccess }) {
   const [identifier, setIdentifier] = useState('');
@@ -13,6 +14,10 @@ export default function AdminLoginPage({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    initAppTheme();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

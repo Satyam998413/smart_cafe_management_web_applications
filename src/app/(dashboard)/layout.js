@@ -9,6 +9,7 @@ import NotificationBanner from '@/components/NotificationBanner';
 import { DashboardContext } from '@/features/dashboard/DashboardContext';
 import { useDashboardState } from '@/features/dashboard/useDashboardState';
 import { springs } from '@/lib/motionTokens';
+import { applyAppTheme } from '@/lib/themeManager';
 
 // Route-scoped role gates — a customer hitting /staff (or a staff member
 // hitting /smart-ai) directly by URL gets bounced to /orders instead of
@@ -66,7 +67,13 @@ export default function DashboardLayout({ children }) {
     apiFetch('/organizations/me')
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled && data && data.premiseType) setPremiseType(data.premiseType);
+        if (!cancelled && data) {
+          if (data.premiseType) setPremiseType(data.premiseType);
+          if (data.theme) {
+            const isDark = localStorage.getItem('app_theme') !== 'light';
+            applyAppTheme(data.theme, isDark);
+          }
+        }
       })
       .catch(() => {});
     return () => {

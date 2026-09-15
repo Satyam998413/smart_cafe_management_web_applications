@@ -3,21 +3,22 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sun, Moon } from 'lucide-react';
+import { applyAppTheme, initAppTheme } from '@/lib/themeManager';
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('app_theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.setAttribute('data-theme', savedTheme);
+    initAppTheme();
+    const savedMode = localStorage.getItem('app_theme') || 'dark';
+    setTheme(savedMode);
   }, []);
 
   const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('app_theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
+    const nextMode = theme === 'dark' ? 'light' : 'dark';
+    const activePreset = localStorage.getItem('app_theme_preset') || 'sunset_orange';
+    setTheme(nextMode);
+    applyAppTheme(activePreset, nextMode === 'dark');
   };
 
   return (

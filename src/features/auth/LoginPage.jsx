@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coffee, Lock, User, Mail, Eye, EyeOff, ShieldCheck, UtensilsCrossed, Sparkles, Cpu, Activity, Zap, CheckCircle2 } from 'lucide-react';
 import { API_BASE, getOrCreateHiveId } from '@/lib/apiClient';
 import ThemeToggle from '@/components/ThemeToggle';
 import Button from '@/components/ui/Button';
+import { initAppTheme } from '@/lib/themeManager';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [mode, setMode] = useState('customer'); // 'customer' | 'staff'
+
+  useEffect(() => {
+    initAppTheme();
+  }, []);
 
   return (
     <div

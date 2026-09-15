@@ -27,23 +27,22 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
 
   useEffect(() => {
+    if (pathname === '/admin/login') return;
     const storedToken = localStorage.getItem('admin_token') || '';
     const storedRole = localStorage.getItem('admin_role') || '';
+
     if (storedToken && storedRole === 'master_admin') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToken(storedToken);
       setUser({ name: localStorage.getItem('admin_name') || 'Alex Mercer', id: localStorage.getItem('admin_user_id') || '' });
     } else {
       setToken('');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (pathname === '/admin/login') return;
-    if (token === '') {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_role');
+      localStorage.removeItem('admin_name');
+      localStorage.removeItem('admin_user_id');
       router.replace('/admin/login');
     }
-  }, [token, pathname, router]);
+  }, [pathname, router]);
 
   const logout = () => {
     localStorage.removeItem('admin_token');
