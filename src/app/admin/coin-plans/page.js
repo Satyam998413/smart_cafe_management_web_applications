@@ -135,13 +135,6 @@ export default function CoinPlansPage() {
           gap: '1.25rem'
         }}
       >
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Coin Plans</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-            Recharge catalog for platform coin purchases.
-          </p>
-        </div>
-
         <button className="btn-orange" onClick={openAdd} style={{ justifyContent: 'center' }}>
           <Plus size={16} /> New coin plan
         </button>

@@ -5,7 +5,7 @@ import { serializeOrganization } from '@/lib/serializers.js';
 import { requireAuth, requireMasterAdmin } from '@/lib/auth.js';
 import { logAudit } from '@/lib/auditLog.js';
 
-const PLAN_TIERS = ['standard', 'enterprise'];
+const PLAN_TIERS = ['free', 'standard', 'pro', 'enterprise'];
 
 // GET /api/admin/organizations/[id] — ported from adminController.js's
 // getOrganization. Master Admin only.

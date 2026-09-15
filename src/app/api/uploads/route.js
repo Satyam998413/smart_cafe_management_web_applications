@@ -39,7 +39,7 @@ async function ensureBucket(admin) {
 export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
-  const roleError = requireRole(auth, 'owner', 'manager');
+  const roleError = requireRole(auth, 'owner', 'manager', 'master_admin');
   if (roleError) return roleError;
 
   try {

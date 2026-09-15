@@ -87,9 +87,9 @@ export default function OrgAiCredentialsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div>
-        <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Configured models</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', width: '100%' }}>
+      <div style={{ width: '100%' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.85rem' }}>Configured AI Models & Credentials</h2>
         <AiCredentialList
           apiFetch={apiFetch}
           listEndpoint={`/admin/organizations/${org.id}/ai-credentials`}
@@ -99,11 +99,13 @@ export default function OrgAiCredentialsPage() {
         />
       </div>
 
-      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: 620 }}>
+      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
         <div>
-          <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>Add an organization AI credential</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            Lets this tenant&rsquo;s Smart Waiter/AI Chat use their own key and custom Base URL. Supports OpenAI, Groq, Gemini, Ollama local, vLLM, and custom endpoints. Keys are encrypted at rest.
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+            Add Tenant AI Provider Credential
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+            Lets this tenant&rsquo;s Smart Waiter & Voice AI use their own key and custom Base URL (OpenAI, Groq, Gemini, Ollama local, vLLM, custom enterprise proxies). Keys are encrypted at rest.
           </p>
         </div>
 
@@ -148,35 +150,41 @@ export default function OrgAiCredentialsPage() {
           <input id="ai-key" type="password" className="field-input" value={form.apiKey} onChange={(e) => set({ apiKey: e.target.value })} placeholder="sk-…" required />
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="ai-base-url">
-            Base URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(Custom API Endpoint URL)</span>
-          </label>
-          <input
-            id="ai-base-url"
-            type="url"
-            className="field-input"
-            value={form.baseUrl}
-            onChange={(e) => set({ baseUrl: e.target.value })}
-            placeholder="e.g. https://api.openai.com/v1 or http://localhost:11434/v1"
-          />
-        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          <div>
+            <label className="field-label" htmlFor="ai-base-url">
+              Base URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(Custom API Endpoint URL)</span>
+            </label>
+            <input
+              id="ai-base-url"
+              type="url"
+              className="field-input"
+              value={form.baseUrl}
+              onChange={(e) => set({ baseUrl: e.target.value })}
+              placeholder="e.g. https://api.openai.com/v1 or http://localhost:11434/v1"
+            />
+          </div>
 
-        <div>
-          <label className="field-label" htmlFor="ai-model">
-            Model Name <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
-          </label>
-          <input id="ai-model" type="text" className="field-input" value={form.model} onChange={(e) => set({ model: e.target.value })} placeholder="e.g. gpt-4o or deepseek/deepseek-v4-flash" />
+          <div>
+            <label className="field-label" htmlFor="ai-model">
+              Model Name <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+            </label>
+            <input id="ai-model" type="text" className="field-input" value={form.model} onChange={(e) => set({ model: e.target.value })} placeholder="e.g. gpt-4o or deepseek/deepseek-v4-flash" />
+          </div>
         </div>
 
         {error && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{error}</div>}
 
-        <Button type="submit" variant="primary" loading={saving} disabled={saving}>
-          {saving ? 'Adding…' : 'Add credential'}
-        </Button>
+        <div>
+          <Button type="submit" variant="primary" loading={saving} disabled={saving}>
+            {saving ? 'Adding…' : 'Add credential'}
+          </Button>
+        </div>
       </form>
 
-      <AiTestPanel apiFetch={apiFetch} testEndpoint={`/admin/organizations/${org.id}/ai-credentials/test`} credentials={credentials} />
+      <div style={{ width: '100%' }}>
+        <AiTestPanel apiFetch={apiFetch} testEndpoint={`/admin/organizations/${org.id}/ai-credentials/test`} credentials={credentials} />
+      </div>
     </div>
   );
 }

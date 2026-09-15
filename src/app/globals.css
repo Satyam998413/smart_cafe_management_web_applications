@@ -1054,12 +1054,12 @@ body {
 .admin-content {
   flex: 1;
   min-width: 0;
-  padding: 2rem 2.5rem 3rem;
+  padding: 2.25rem 3rem 4rem;
   background: var(--bg-page);
 }
 
 .admin-content-inner {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 

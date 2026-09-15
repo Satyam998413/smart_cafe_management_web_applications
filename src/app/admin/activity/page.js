@@ -70,13 +70,6 @@ export default function ActivityPage() {
           gap: '1.25rem'
         }}
       >
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>System Activity</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-            Audit log of admin actions across all tenants.
-          </p>
-        </div>
-
         <form onSubmit={applyFilters} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label className="field-label" htmlFor="act-org">

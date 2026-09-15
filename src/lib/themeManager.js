@@ -1,5 +1,33 @@
 'use client';
 
+export const GOOGLE_HEADER_FONTS = [
+  { id: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans (Default Display)' },
+  { id: 'Outfit', label: 'Outfit (Modern Geometric)' },
+  { id: 'Poppins', label: 'Poppins (Vibrant Sans)' },
+  { id: 'Inter', label: 'Inter (Clean Technical)' },
+  { id: 'Space Grotesk', label: 'Space Grotesk (Tech Monospace Display)' },
+  { id: 'Syne', label: 'Syne (Expressive Art)' },
+  { id: 'Sora', label: 'Sora (Futuristic UI)' },
+  { id: 'Bricolage Grotesque', label: 'Bricolage Grotesque (Bold Character)' },
+  { id: 'Playfair Display', label: 'Playfair Display (Luxury Serif)' },
+  { id: 'Montserrat', label: 'Montserrat (Classic Display)' },
+  { id: 'Lexend', label: 'Lexend (Clean Reading)' },
+  { id: 'Cinzel', label: 'Cinzel (Cinematic Serif)' }
+];
+
+export const GOOGLE_BODY_FONTS = [
+  { id: 'Inter', label: 'Inter (Default UI Sans)' },
+  { id: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans' },
+  { id: 'Roboto', label: 'Roboto (Google Standard)' },
+  { id: 'Open Sans', label: 'Open Sans' },
+  { id: 'Poppins', label: 'Poppins' },
+  { id: 'Lato', label: 'Lato' },
+  { id: 'Nunito', label: 'Nunito (Rounded Friendly)' },
+  { id: 'DM Sans', label: 'DM Sans (Geometric Body)' },
+  { id: 'Manrope', label: 'Manrope' },
+  { id: 'IBM Plex Sans', label: 'IBM Plex Sans' }
+];
+
 export const THEME_PRESETS = [
   {
     id: 'sunset_orange',
@@ -161,6 +189,50 @@ export function hexToRgba(hex, alpha = 1) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function loadGoogleFontCss(fontFamily) {
+  if (typeof document === 'undefined' || !fontFamily) return;
+  const fontId = `google-font-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+  if (document.getElementById(fontId)) return;
+
+  const link = document.createElement('link');
+  link.id = fontId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700;800&display=swap`;
+  document.head.appendChild(link);
+}
+
+export function applyGoogleFontHeader(fontFamily) {
+  if (typeof document === 'undefined') return;
+  const family = fontFamily || 'Plus Jakarta Sans';
+  loadGoogleFontCss(family);
+  const root = document.documentElement;
+  root.style.setProperty('--font-display', `'${family}', var(--font-fallback-sans)`);
+  root.style.setProperty('--font-heading', `'${family}', var(--font-fallback-sans)`);
+  localStorage.setItem('app_font_header', family);
+}
+
+export function applyGoogleFontBody(fontFamily) {
+  if (typeof document === 'undefined') return;
+  const family = fontFamily || 'Inter';
+  loadGoogleFontCss(family);
+  const root = document.documentElement;
+  root.style.setProperty('--font-body', `'${family}', var(--font-fallback-sans)`);
+  root.style.setProperty('--font-sans', `'${family}', var(--font-fallback-sans)`);
+  localStorage.setItem('app_font_body', family);
+}
+
+export function applyFontAndIconScale(scalePercent) {
+  if (typeof document === 'undefined') return;
+  const percent = Number(scalePercent) || 100;
+  const scale = percent / 100;
+  const root = document.documentElement;
+
+  root.style.setProperty('--font-scale', String(scale));
+  root.style.setProperty('--icon-scale', String(scale));
+  root.style.fontSize = `${percent}%`;
+  localStorage.setItem('app_font_scale', String(percent));
+}
+
 export function applyAppTheme(presetOrTheme, isDarkMode = true) {
   let primary = '#ff7a00';
   let secondary = '#e06900';
@@ -202,5 +274,12 @@ export function initAppTheme() {
   if (typeof window === 'undefined') return;
   const savedPreset = localStorage.getItem('app_theme_preset') || 'sunset_orange';
   const savedMode = localStorage.getItem('app_theme') || 'dark';
+  const savedHeaderFont = localStorage.getItem('app_font_header') || 'Plus Jakarta Sans';
+  const savedBodyFont = localStorage.getItem('app_font_body') || 'Inter';
+  const savedScale = localStorage.getItem('app_font_scale') || '100';
+
   applyAppTheme(savedPreset, savedMode === 'dark');
+  applyGoogleFontHeader(savedHeaderFont);
+  applyGoogleFontBody(savedBodyFont);
+  applyFontAndIconScale(Number(savedScale));
 }

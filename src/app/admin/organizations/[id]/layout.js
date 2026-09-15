@@ -16,23 +16,26 @@ import {
   ArrowLeft,
   ChevronRight,
   ShieldCheck,
-  Server
+  Server,
+  Palette
 } from 'lucide-react';
 import { useAdmin } from '@/features/admin/AdminContext';
 import { OrgDetailContext } from '@/features/admin/OrgDetailContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const TABS = [
   { path: '', label: 'Overview', desc: 'Org summary & details', icon: Building2, step: '01' },
   { path: '/domain', label: 'Custom Domain', desc: 'Domain & SSL routing', icon: Globe, step: '02' },
   { path: '/ai', label: 'AI Credentials', desc: 'LLM & voice provider keys', icon: Sparkles, step: '03' },
-  { path: '/data-plane', label: 'Data Plane', desc: 'Shared DB or BYO Supabase', icon: Database, step: '04' },
-  { path: '/layout-devices', label: 'Layout & Devices', desc: 'Spaces & IoT controller', icon: Cpu, step: '05' },
-  { path: '/wallet', label: 'Wallet & Coins', desc: 'Credits & coin plan', icon: Wallet, step: '06' },
-  { path: '/staff', label: 'Staff Roster', desc: 'User accounts & permissions', icon: Users, step: '07' },
-  { path: '/history', label: 'Plan History', desc: 'Subscriptions & audits', icon: History, step: '08' },
-  { path: '/security-log', label: 'Security Log', desc: 'Access logs & auth events', icon: ShieldAlert, step: '09' }
+  { path: '/theme', label: 'Theme & Fonts', desc: 'Custom fonts, scaling & palette', icon: Palette, step: '04' },
+  { path: '/data-plane', label: 'Data Plane', desc: 'Shared DB or BYO Supabase', icon: Database, step: '05' },
+  { path: '/layout-devices', label: 'Layout & Devices', desc: 'Spaces & IoT controller', icon: Cpu, step: '06' },
+  { path: '/wallet', label: 'Wallet & Coins', desc: 'Credits & coin plan', icon: Wallet, step: '07' },
+  { path: '/staff', label: 'Staff Roster', desc: 'User accounts & permissions', icon: Users, step: '08' },
+  { path: '/history', label: 'Plan History', desc: 'Subscriptions & audits', icon: History, step: '09' },
+  { path: '/security-log', label: 'Security Log', desc: 'Access logs & auth events', icon: ShieldAlert, step: '10' }
 ];
 
 export default function OrgDetailLayout({ children }) {
@@ -44,8 +47,8 @@ export default function OrgDetailLayout({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent && !org) setLoading(true);
     setError('');
     try {
       const res = await apiFetch(`/admin/organizations/${id}`);
@@ -61,15 +64,17 @@ export default function OrgDetailLayout({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [id, apiFetch]);
+  }, [id, apiFetch, org]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!org || org.id !== id) {
+      load(false);
+    }
+  }, [id, org, load]);
 
   const basePath = `/admin/organizations/${id}`;
 
-  if (loading) {
+  if (loading && !org) {
     return (
       <div style={{ display: 'flex', gap: '1.5rem', width: '100%' }}>
         <div className="glass-card" style={{ width: 290, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -110,7 +115,7 @@ export default function OrgDetailLayout({ children }) {
   return (
     <OrgDetailContext.Provider value={{ org, apiFetch, reload: load }}>
       <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
-        {/* Left Organization Steps & Detail Sidebar (300px) */}
+        {/* Left Organization Steps Navigation Sidebar (300px) */}
         <div
           className="glass-card"
           style={{
@@ -135,62 +140,6 @@ export default function OrgDetailLayout({ children }) {
           >
             <ArrowLeft size={14} /> Back to Organizations
           </button>
-
-          {/* Organization Summary Badge Card */}
-          <div
-            style={{
-              padding: '1rem',
-              background: 'var(--bg-surface-elevated)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.65rem'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 'var(--radius-md)',
-                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '1rem',
-                  overflow: 'hidden'
-                }}
-              >
-                {org.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={org.logoUrl} alt={org.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  org.name?.charAt(0) || 'O'
-                )}
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {org.name}
-                </h3>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>ID: {org.id?.slice(0, 12)}…</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <span className="status-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontSize: '0.68rem', textTransform: 'uppercase' }}>
-                {org.premiseType || 'general'}
-              </span>
-              <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontSize: '0.68rem', textTransform: 'uppercase' }}>
-                {org.planTier || 'standard'}
-              </span>
-              <span className="status-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#7e22ce', fontSize: '0.68rem' }}>
-                {org.dataPlaneType === 'byo_supabase' ? 'BYO Supabase' : 'Shared DB'}
-              </span>
-            </div>
-          </div>
 
           {/* Step-by-Step Navigation Menu */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -266,8 +215,95 @@ export default function OrgDetailLayout({ children }) {
           </div>
         </div>
 
-        {/* Right Active Sub-Page Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+        {/* Right Active Sub-Page Workspace (Full Width 100%) */}
+        <div style={{ flex: 1, width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Organization Top Banner Card with Org Name & 1st Card Details */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '1.5rem 1.75rem',
+              borderRadius: 'var(--radius-lg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1.5rem',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', minWidth: 0 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 'var(--radius-md)',
+                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '1.25rem',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  boxShadow: 'var(--shadow-accent)'
+                }}
+              >
+                {org.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={org.logoUrl} alt={org.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  org.name?.charAt(0) || 'O'
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {org.name}
+                </h1>
+
+                {/* 1st Card Details Badges (Premise, Plan, Data Plane, ID, Email) */}
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span className="status-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                    {org.premiseType || 'general'}
+                  </span>
+                  <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                    {org.planTier || 'standard'}
+                  </span>
+                  <span className="status-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#7e22ce', fontSize: '0.72rem', fontWeight: 700 }}>
+                    {org.dataPlaneType === 'byo_supabase' ? 'BYO Supabase' : 'Shared DB'}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace', background: 'var(--bg-surface-elevated)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                    ID: {org.id}
+                  </span>
+                  {org.contactEmail && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      · {org.contactEmail}
+                    </span>
+                  )}
+                  {org.customDomain && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', fontWeight: 600 }}>
+                      · {org.customDomain}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+              <div className="system-status-pill" style={{ padding: '0.4rem 0.85rem' }}>
+                <span className="dot" style={{ background: '#10b981' }} />
+                ACTIVE TENANT
+              </div>
+              <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '0.75rem' }}>
+                <ThemeToggle />
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-Page Content */}
+          <div style={{ width: '100%' }}>{children}</div>
+        </div>
       </div>
     </OrgDetailContext.Provider>
   );

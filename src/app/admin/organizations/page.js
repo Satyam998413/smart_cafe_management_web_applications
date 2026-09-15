@@ -84,15 +84,6 @@ export default function OrganizationsListPage() {
           overflowY: 'auto'
         }}
       >
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Organizations
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-            Manage tenants, branding & data plane.
-          </p>
-        </div>
-
         {/* Action Button */}
         <button className="btn-orange" onClick={() => router.push('/admin/organizations/new')} style={{ justifyContent: 'center' }}>
           <Plus size={16} /> Create organization

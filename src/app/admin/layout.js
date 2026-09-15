@@ -4,7 +4,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Building2, Coins, LogOut, Megaphone, Menu, ShieldCheck, Sparkles, Ticket, X, User } from 'lucide-react';
+import {
+  Activity,
+  Building2,
+  Coins,
+  LogOut,
+  Megaphone,
+  Menu,
+  ShieldCheck,
+  Sparkles,
+  Ticket,
+  X,
+  User,
+  ArrowLeft,
+  Palette
+} from 'lucide-react';
 import { createAdminApiFetch } from '@/lib/adminApiClient';
 import { AdminContext } from '@/features/admin/AdminContext';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -16,8 +30,40 @@ const NAV_ITEMS = [
   { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
   { href: '/admin/offers', label: 'Offers', icon: Megaphone },
   { href: '/admin/ai-configuration', label: 'AI Configuration', icon: Sparkles },
-  { href: '/admin/activity', label: 'Activity', icon: Activity }
+  { href: '/admin/activity', label: 'Activity', icon: Activity },
+  { href: '/admin/theme', label: 'Theme Settings', icon: Palette }
 ];
+
+const getPageHeaderInfo = (pathname) => {
+  if (pathname === '/admin/theme') {
+    return { title: 'Theme & Fonts Settings', subtitle: 'Platform Google fonts, typography scaling & color palette presets', backHref: null };
+  }
+  if (pathname === '/admin/organizations/new') {
+    return { title: 'Onboard Organization', subtitle: 'Provision a new tenant and grant starter wallet', backHref: '/admin/organizations' };
+  }
+  if (pathname.startsWith('/admin/organizations/')) {
+    return null;
+  }
+  if (pathname.startsWith('/admin/organizations')) {
+    return { title: 'Organizations', subtitle: 'Manage tenants, branding, data plane and access', backHref: null };
+  }
+  if (pathname.startsWith('/admin/coin-plans')) {
+    return { title: 'Coin Plans', subtitle: 'Recharge catalog for coin purchases', backHref: null };
+  }
+  if (pathname.startsWith('/admin/coupons')) {
+    return { title: 'Coupons', subtitle: 'Discount codes for bill checkout or coin recharges', backHref: null };
+  }
+  if (pathname.startsWith('/admin/offers')) {
+    return { title: 'Offers', subtitle: 'Platform-wide promotional campaigns & coin bonuses', backHref: null };
+  }
+  if (pathname.startsWith('/admin/ai-configuration')) {
+    return { title: 'Master AI Configuration', subtitle: 'Platform fallback LLM & voice provider credentials', backHref: null };
+  }
+  if (pathname.startsWith('/admin/activity')) {
+    return { title: 'System Activity', subtitle: 'Audit log of admin actions across all tenants', backHref: null };
+  }
+  return { title: 'Admin Console', subtitle: 'Master Management Console', backHref: null };
+};
 
 export default function AdminLayout({ children }) {
   const [token, setToken] = useState(undefined);
@@ -61,6 +107,7 @@ export default function AdminLayout({ children }) {
   if (token === undefined || !token) return null;
 
   const apiFetch = createAdminApiFetch(logout);
+  const pageInfo = getPageHeaderInfo(pathname);
 
   return (
     <AdminContext.Provider value={{ apiFetch, user, logout }}>
@@ -119,14 +166,56 @@ export default function AdminLayout({ children }) {
         </motion.aside>
 
         <div className="admin-content">
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div className="system-status-pill">
-              <span className="dot" style={{ background: '#10b981' }} />
-              ALL SYSTEM RUNNING STABLE
+          {/* Top Header Bar with Title, Subtitle, optional Back Button on Left */}
+          {pageInfo && (
+            <div
+              className="glass-card"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1.5rem',
+                padding: '1.25rem 1.75rem',
+                marginBottom: '2rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-surface)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {pageInfo.backHref && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => router.push(pageInfo.backHref)}
+                    title="Go back"
+                    style={{ width: 38, height: 38, background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
+                <div>
+                  <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+                    {pageInfo.title}
+                  </h1>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                    {pageInfo.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="system-status-pill" style={{ padding: '0.4rem 0.85rem' }}>
+                  <span className="dot" style={{ background: '#10b981' }} />
+                  ALL SYSTEM RUNNING STABLE
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderLeft: '1px solid var(--border)', paddingLeft: '1rem' }}>
+                  <ThemeToggle />
+                </div>
+              </div>
             </div>
-            <AdminThemeSettings />
-            <ThemeToggle />
-          </div>
+          )}
+
           <div className="admin-content-inner">{children}</div>
         </div>
       </div>
