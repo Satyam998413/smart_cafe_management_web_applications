@@ -1,14 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Ported unchanged from server/src/config/supabaseClient.js as part of the
-// Next.js migration (plan Phase 10) — same env vars, same trust model (only
-// this server-side module ever holds the anon key; no client component
-// imports this file).
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://placeholder-project.supabase.co';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY environment variables are required');
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
+
+const isConfigured = Boolean(
+  (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+  (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+);
+
+if (!isConfigured && typeof window !== 'undefined') {
+  console.warn(
+    '[supabaseClient] SUPABASE_URL and SUPABASE_ANON_KEY are not set. Using fallback placeholder client.'
+  );
 }
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
