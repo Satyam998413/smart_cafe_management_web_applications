@@ -93,6 +93,10 @@ export async function POST(request) {
       .select('*')
       .single();
     if (billError) throw billError;
+    try {
+      const fs = await import('fs');
+      fs.appendFileSync('C:/Satyam_WorkSpace/My_Flutter_Learning/smart_cafe_manager/smart_cafe_management_web_applications/debug_trace.txt', `role=${auth.userRole} orgId=${auth.orgId} userId=${auth.userId} spaceId=${spaceId} ordersLen=${orders.length} bill=${JSON.stringify(bill)} fromCalls=${supabase.from.mock.calls.length}\n`);
+    } catch {}
 
     const { error: linkError } = await supabase
       .from('orders')
