@@ -58,6 +58,15 @@ export default function SmartAiPage({ apiFetch, authName, menu, cartApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menu]);
 
+  // Stop any active speech synthesis whenever switching sub-tabs or leaving the page
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [activeSubTab]);
+
   const handlePlaceOrderFromChat = async () => {
     if (cartApi.cart.length === 0) {
       setMessages((prev) => [

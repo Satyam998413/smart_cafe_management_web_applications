@@ -51,19 +51,15 @@ export default function VoiceOrb({ state = 'idle', size = 150, onClick, onDouble
         animate={
           bouncing
             ? { y: [0, -size * 0.0933, 0], scale: 1, opacity: 1 }
-            : !reduceMotion && state === 'idle'
-              ? { y: 0, scale: [1, 1.03, 1], opacity: [1, 0.92, 1] }
-              : { y: 0, scale: 1, opacity: 1 }
+            : { y: 0, scale: 1, opacity: 1 }
         }
         transition={
           bouncing
             ? { duration: 0.6, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }
-            : !reduceMotion && state === 'idle'
-              ? { duration: 3.2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }
-              : { duration: 0.2 }
+            : { duration: 0.2 }
         }
       >
-        {/* Sonar ping — expands and fades on its own loop, listening only */}
+        {/* Sonar ping wave — expands and fades, listening state only */}
         <motion.div
           aria-hidden="true"
           style={{
@@ -73,21 +69,21 @@ export default function VoiceOrb({ state = 'idle', size = 150, onClick, onDouble
             border: `1.5px solid ${theme.core}`,
             pointerEvents: 'none'
           }}
-          animate={!reduceMotion && isListening ? { scale: [1, 1.35], opacity: [0.55, 0] } : { scale: 1, opacity: 0 }}
+          animate={!reduceMotion && isListening ? { scale: [1, 1.38], opacity: [0.65, 0] } : { scale: 1, opacity: 0 }}
           transition={
             !reduceMotion && isListening
-              ? { duration: 1.8, repeat: Infinity, ease: 'easeOut' }
+              ? { duration: 1.6, repeat: Infinity, ease: 'easeOut' }
               : { duration: 0.2 }
           }
         />
 
-        {/* Outer rotating halo ring + marker dot */}
+        {/* Outer rotating halo ring + marker dot — spinning when active, completely static when idle */}
         <motion.div
           style={{
             position: 'absolute',
             inset: size * 0.0167,
             borderRadius: '50%',
-            border: `1.5px solid ${theme.core}66`,
+            border: `1.5px solid ${theme.core}${state === 'idle' ? '33' : '66'}`,
             transition: COLOR_TRANSITION
           }}
           animate={!reduceMotion && spinning ? { rotate: 360 } : { rotate: 0 }}
@@ -97,39 +93,46 @@ export default function VoiceOrb({ state = 'idle', size = 150, onClick, onDouble
               : { duration: 0.2 }
           }
         >
-          <span
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: size * 0.0667,
-              height: size * 0.0667,
-              borderRadius: '50%',
-              background: theme.core,
-              boxShadow: `0 0 ${size * 0.0533}px ${size * 0.0133}px ${theme.core}`,
-              transition: COLOR_TRANSITION
-            }}
-          />
+          {state !== 'idle' && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: size * 0.0667,
+                height: size * 0.0667,
+                borderRadius: '50%',
+                background: theme.core,
+                boxShadow: `0 0 ${size * 0.0533}px ${size * 0.0133}px ${theme.core}`,
+                transition: COLOR_TRANSITION
+              }}
+            />
+          )}
         </motion.div>
 
-        {/* Middle pulsing energy field — bigger swings while listening/
-            speaking, a slow gentle breath otherwise (including idle) */}
+        {/* Middle energy field — spreading/shrinking while listening/speaking; static 1:1 when idle */}
         <motion.div
           style={{
             position: 'absolute',
             inset: size * 0.1167,
             borderRadius: '50%',
-            background: `${theme.core}1F`,
-            border: `2px solid ${theme.core}99`,
-            boxShadow: `0 0 ${size * 0.2133}px ${size * 0.0267}px ${theme.core}66`,
+            background: `${theme.core}${state === 'idle' ? '12' : '1F'}`,
+            border: `2px solid ${theme.core}${state === 'idle' ? '44' : '99'}`,
+            boxShadow: state === 'idle' ? 'none' : `0 0 ${size * 0.2133}px ${size * 0.0267}px ${theme.core}66`,
             transition: COLOR_TRANSITION
           }}
-          animate={reduceMotion ? { scale: 1 } : { scale: pulseActive ? [1, 1.25] : [1, 1.06] }}
+          animate={
+            reduceMotion || state === 'idle'
+              ? { scale: 1 }
+              : isListening
+                ? { scale: [1.25, 0.95, 1.25] }
+                : { scale: [1, 1.25] }
+          }
           transition={
-            reduceMotion
+            reduceMotion || state === 'idle'
               ? { duration: 0.2 }
-              : { duration: pulseActive ? 1.4 : 2.6, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }
+              : { duration: isListening ? 1.5 : 1.4, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }
           }
         />
 
@@ -140,17 +143,17 @@ export default function VoiceOrb({ state = 'idle', size = 150, onClick, onDouble
             inset: size * 0.2,
             borderRadius: '50%',
             background: `radial-gradient(circle, rgba(255,255,255,0.9) 0%, ${theme.core} 40%, ${theme.core}CC 70%, #000 100%)`,
-            boxShadow: `0 0 ${size * 0.16}px ${size * 0.0133}px ${theme.core}99`,
+            boxShadow: state === 'idle' ? 'none' : `0 0 ${size * 0.16}px ${size * 0.0133}px ${theme.core}99`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
             transition: COLOR_TRANSITION
           }}
-          animate={!reduceMotion && isThinking ? { scale: [1, 1.05] } : { scale: 1 }}
+          animate={!reduceMotion && isThinking ? { scale: [1, 1.08, 1] } : { scale: 1 }}
           transition={
             !reduceMotion && isThinking
-              ? { duration: 0.9, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }
+              ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' }
               : { duration: 0.2 }
           }
         >

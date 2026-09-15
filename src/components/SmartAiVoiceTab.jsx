@@ -145,6 +145,31 @@ export default function SmartAiVoiceTab({
     recognition.start();
   };
 
+  // Mandatory cleanup on page leave / component unmount / route transition:
+  // immediately stop any active TTS speech and STT speech recognition session.
+  useEffect(() => {
+    const stopEverything = () => {
+      speechSynthesisApi?.cancel();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onend = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.stop();
+        } catch (_) {}
+      }
+      setWaiterState('idle');
+    };
+
+    window.addEventListener('popstate', stopEverything);
+    window.addEventListener('beforeunload', stopEverything);
+    return () => {
+      stopEverything();
+      window.removeEventListener('popstate', stopEverything);
+      window.removeEventListener('beforeunload', stopEverything);
+    };
+  }, []);
+
   useEffect(() => {
     if (!supported || greetedRef.current) return;
     greetedRef.current = true;
