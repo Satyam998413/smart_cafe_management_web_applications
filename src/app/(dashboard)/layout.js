@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Header from '@/components/Header';
 import NavLinks from '@/components/NavLinks';
 import NotificationBanner from '@/components/NotificationBanner';
-import LoginPage from '@/features/auth/LoginPage';
 import { DashboardContext } from '@/features/dashboard/DashboardContext';
 import { useDashboardState } from '@/features/dashboard/useDashboardState';
 import { springs } from '@/lib/motionTokens';
@@ -43,12 +42,16 @@ export default function DashboardLayout({ children }) {
   const { authToken, authRole, authName, connected, apiFetch, socket, clearAuth, handleLoginSuccess } = state;
 
   useEffect(() => {
+    if (authToken === '') {
+      router.replace('/login');
+      return;
+    }
     if (!authRole) return;
     const gate = ROLE_GATES.find((g) => pathname === g.prefix || pathname.startsWith(`${g.prefix}/`));
     if (gate && !gate.roles.includes(authRole)) {
       router.replace('/orders');
     }
-  }, [pathname, authRole, router]);
+  }, [pathname, authToken, authRole, router]);
 
   // Org premise type — fetched once here (rather than in useDashboardState,
   // which every route already depends on) purely so NavLinks can hide the
@@ -72,8 +75,7 @@ export default function DashboardLayout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken]);
 
-  if (authToken === undefined) return null;
-  if (!authToken) return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  if (authToken === undefined || !authToken) return null;
 
   return (
     <DashboardContext.Provider value={state}>

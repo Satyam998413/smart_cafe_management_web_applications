@@ -207,13 +207,14 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: rgba(16, 18, 27, 0.85);
+  background: var(--bg-surface);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .brand {
@@ -1013,13 +1014,14 @@ body {
   flex-direction: column;
   gap: 0.25rem;
   padding: 1.5rem 1rem;
-  background: #0d0f17;
+  background: var(--bg-surface);
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
   z-index: 40;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .admin-sidebar-link {
@@ -1041,10 +1043,10 @@ body {
 }
 
 .admin-sidebar-link.active {
-  background: rgba(99, 102, 241, 0.16);
-  color: #a5b4fc;
-  border-left: 3px solid #6366f1;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  background: var(--accent-wash);
+  color: var(--accent-primary);
+  border-left: 3px solid var(--accent-primary);
+  box-shadow: var(--shadow-accent);
 }
 
 .admin-content {

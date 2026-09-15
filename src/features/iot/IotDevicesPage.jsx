@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Cpu, RadioTower, Loader2, Lightbulb, Fan, Snowflake, Plus, Power, PowerOff, LayoutGrid, List } from 'lucide-react';
+import { Cpu, RadioTower, Loader2, Lightbulb, Fan, Snowflake, Plus, Power, PowerOff, LayoutGrid, List, Search, Zap, Filter, Activity } from 'lucide-react';
 import { jsonBody } from '@/lib/apiClient.js';
 import { isOnOffCapability } from '@/lib/iot/deviceCommands.js';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -62,6 +62,9 @@ export default function IotDevicesPage({ apiFetch }) {
   const [orgSwitchResult, setOrgSwitchResult] = useState('');
   const [spaceSwitchBusy, setSpaceSwitchBusy] = useState(false);
   const [spaceSwitchResult, setSpaceSwitchResult] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
 
   const [regName, setRegName] = useState('');
   const [regType, setRegType] = useState('lamp');
@@ -251,8 +254,8 @@ export default function IotDevicesPage({ apiFetch }) {
         </TiltCard>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <select className="field-input" style={{ maxWidth: 260 }} value={siteId} onChange={(e) => setSiteId(e.target.value)} disabled={sitesLoading}>
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <select className="field-input" style={{ maxWidth: 240 }} value={siteId} onChange={(e) => setSiteId(e.target.value)} disabled={sitesLoading}>
           <option value="">{sitesLoading ? 'Loading sites…' : 'Select a site…'}</option>
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
@@ -260,7 +263,7 @@ export default function IotDevicesPage({ apiFetch }) {
             </option>
           ))}
         </select>
-        <select className="field-input" style={{ maxWidth: 260 }} value={spaceId} onChange={(e) => setSpaceId(e.target.value)} disabled={!siteId || spacesLoading}>
+        <select className="field-input" style={{ maxWidth: 240 }} value={spaceId} onChange={(e) => setSpaceId(e.target.value)} disabled={!siteId || spacesLoading}>
           <option value="">{spacesLoading ? 'Loading spaces…' : 'Select a space…'}</option>
           {spaces.map((s) => (
             <option key={s.id} value={s.id}>
@@ -270,26 +273,66 @@ export default function IotDevicesPage({ apiFetch }) {
         </select>
 
         {spaceId && (
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <button
-              type="button"
-              className={`chip ${viewMode === 'list' ? 'active' : ''}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-              onClick={() => setViewMode('list')}
-            >
-              <List size={14} /> List
-            </button>
-            <button
-              type="button"
-              className={`chip ${viewMode === 'floor-plan' ? 'active' : ''}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-              onClick={() => setViewMode('floor-plan')}
-            >
-              <LayoutGrid size={14} /> Floor Plan
-            </button>
-          </div>
+          <>
+            <div style={{ position: 'relative', flex: '1 1 200px' }}>
+              <Search size={15} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                className="field-input"
+                style={{ paddingLeft: '2.5rem' }}
+                placeholder="Search devices by name, code or type…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`chip ${viewMode === 'list' ? 'active' : ''}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                onClick={() => setViewMode('list')}
+              >
+                <List size={14} /> List
+              </button>
+              <button
+                type="button"
+                className={`chip ${viewMode === 'floor-plan' ? 'active' : ''}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                onClick={() => setViewMode('floor-plan')}
+              >
+                <LayoutGrid size={14} /> Floor Plan
+              </button>
+            </div>
+          </>
         )}
       </div>
+
+      {spaceId && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginRight: '0.25rem' }}>
+            Filter:
+          </span>
+          {[
+            { id: 'all', label: 'All Equipment' },
+            { id: 'lamp', label: 'Lamps' },
+            { id: 'fan', label: 'Fans' },
+            { id: 'ac', label: 'AC Units' },
+            { id: 'other', label: 'Other' },
+            { id: 'on', label: '🟢 Currently Active' }
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              className={`chip ${filterCategory === cat.id ? 'active' : ''}`}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem' }}
+              onClick={() => setFilterCategory(cat.id)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {sitesError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{sitesError}</div>}
       {spacesError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{spacesError}</div>}
@@ -390,44 +433,71 @@ export default function IotDevicesPage({ apiFetch }) {
             />
           ) : (
             <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} variants={listVariants} initial="hidden" animate="show">
-              {devices.map((device) => {
-                const onOffCapability = device.capabilities.find(isOnOffCapability);
-                const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : null;
-                const TypeIcon = getTypeIcon(device.type);
-                const iconColor = isOn === null ? 'var(--text-muted)' : isOn ? '#059669' : '#dc2626';
-                return (
-                  <motion.div key={device.id} className="glass-card" style={{ padding: '1.1rem 1.25rem' }} variants={rowVariants} layout>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: device.capabilities.length ? '0.5rem' : 0 }}>
-                      <div className="entity-icon" style={{ color: iconColor, background: isOn === null ? undefined : isOn ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)' }}>
-                        <TypeIcon size={18} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {device.name}
-                          <span className="order-id" style={{ fontWeight: 600 }}>{device.deviceCode}</span>
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {device.type} · {device.vendor}
-                          {device.stateUpdatedAt ? ` · updated ${new Date(device.stateUpdatedAt).toLocaleTimeString()}` : ''}
-                        </div>
-                      </div>
-                    </div>
+              {devices
+                .filter((device) => {
+                  const onOffCapability = device.capabilities.find(isOnOffCapability);
+                  const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : false;
+                  if (filterCategory === 'on' && !isOn) return false;
+                  if (filterCategory !== 'all' && filterCategory !== 'on' && device.type !== filterCategory) return false;
+                  if (searchQuery.trim()) {
+                    const q = searchQuery.toLowerCase();
+                    const matchName = device.name?.toLowerCase().includes(q);
+                    const matchCode = device.deviceCode?.toLowerCase().includes(q);
+                    const matchType = device.type?.toLowerCase().includes(q);
+                    return matchName || matchCode || matchType;
+                  }
+                  return true;
+                })
+                .map((device) => {
+                  const onOffCapability = device.capabilities.find(isOnOffCapability);
+                  const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : null;
+                  const TypeIcon = getTypeIcon(device.type);
+                  const iconColor = isOn === null ? 'var(--text-muted)' : isOn ? '#10b981' : '#ef4444';
+                  const wattage = device.type === 'ac' ? '1500W' : device.type === 'fan' ? '65W' : device.type === 'lamp' ? '15W' : '45W';
 
-                    {device.capabilities.length === 0 ? (
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No controllable capabilities registered.</div>
-                    ) : (
-                      device.capabilities.map((capability) => (
-                        <CapabilityControl
-                          key={capability}
-                          capability={capability}
-                          value={device.state?.[capability]}
-                          onSend={(value) => sendCommand(device.id, capability, value)}
-                        />
-                      ))
-                    )}
-                  </motion.div>
-                );
-              })}
+                  return (
+                    <motion.div key={device.id} className="glass-card" style={{ padding: '1.1rem 1.25rem' }} variants={rowVariants} layout>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: device.capabilities.length ? '0.5rem' : 0 }}>
+                        <div
+                          className="entity-icon"
+                          style={{
+                            color: iconColor,
+                            background: isOn === null ? undefined : isOn ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            boxShadow: isOn ? '0 0 12px rgba(16, 185, 129, 0.3)' : 'none'
+                          }}
+                        >
+                          <TypeIcon size={18} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {device.name}
+                            <span className="order-id" style={{ fontWeight: 600 }}>{device.deviceCode}</span>
+                            <span style={{ fontSize: '0.72rem', background: 'var(--bg-surface-elevated)', color: 'var(--text-secondary)', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                              ⚡ {wattage}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            {device.type} · {device.vendor}
+                            {device.stateUpdatedAt ? ` · updated ${new Date(device.stateUpdatedAt).toLocaleTimeString()}` : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      {device.capabilities.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No controllable capabilities registered.</div>
+                      ) : (
+                        device.capabilities.map((capability) => (
+                          <CapabilityControl
+                            key={capability}
+                            capability={capability}
+                            value={device.state?.[capability]}
+                            onSend={(value) => sendCommand(device.id, capability, value)}
+                          />
+                        ))
+                      )}
+                    </motion.div>
+                  );
+                })}
             </motion.div>
           )}
         </>

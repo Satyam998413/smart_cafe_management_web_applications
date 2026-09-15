@@ -124,10 +124,15 @@ export default function AiCredentialList({ apiFetch, listEndpoint, manageEndpoin
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{credential.provider}</strong>
-                {credential.model && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{credential.model}</span>}
+                <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>{credential.provider}</strong>
+                {credential.model && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({credential.model})</span>}
+                {credential.baseUrl && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-surface-elevated)', color: 'var(--accent-primary)', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                    {credential.baseUrl}
+                  </span>
+                )}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Added {new Date(credential.createdAt).toLocaleDateString()}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Added {new Date(credential.createdAt).toLocaleDateString()}</div>
             </div>
             <span
               className={`status-pill`}

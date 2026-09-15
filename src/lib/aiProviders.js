@@ -79,22 +79,27 @@ export const _resetPriorityForTests = () => {
   priorityOrder = seedOrder();
 };
 
-// Well-known providers' fixed API base — 'local' has none since it's always
+// Well-known providers' fixed API base — 'local' or custom providers can specify
 // a tenant's own self-hosted endpoint (org_ai_credentials.base_url).
-// Extend this list (plus a matching entry wherever a tenant picks a
-// provider name in the admin UI) to add a new well-known provider; no other
-// code needs to change, same "one place" shape PROVIDER_BUILDERS already has.
 const KNOWN_PROVIDER_BASE_URLS = {
   openrouter: 'https://openrouter.ai/api/v1',
   groq: 'https://api.groq.com/openai/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai'
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  ollama: 'http://localhost:11434/v1',
+  lmstudio: 'http://localhost:1234/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  together: 'https://api.together.xyz/v1',
+  deepseek: 'https://api.deepseek.com/v1'
 };
 
 // Shared by getOrgProviders/getPlatformDbProviders above and by the
 // org/platform "test this credential" routes, which need the same
 // row.base_url-or-known-default resolution but for one specific row rather
 // than a whole list.
-export const resolveProviderBaseUrl = (row) => row.base_url || KNOWN_PROVIDER_BASE_URLS[row.provider] || null;
+export const resolveProviderBaseUrl = (row) =>
+  row.base_url || KNOWN_PROVIDER_BASE_URLS[row.provider?.toLowerCase()] || null;
 
 // Postgres' undefined_column error (42703) — used by the org AI-credential
 // routes to fall back to a query without `owner_id` when that migration

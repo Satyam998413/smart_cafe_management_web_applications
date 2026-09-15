@@ -19,6 +19,7 @@ const NAV_ITEMS = [
 ];
 
 import ThemeToggle from '@/components/ThemeToggle';
+import AdminThemeSettings from '@/features/admin/AdminThemeSettings';
 
 export default function AdminLayout({ children }) {
   const [token, setToken] = useState(undefined);
@@ -71,11 +72,11 @@ export default function AdminLayout({ children }) {
           transition={{ duration: 0.3 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.5rem 1.5rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(99, 102, 241, 0.4)' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-on-accent)', boxShadow: 'var(--shadow-accent)' }}>
               <Building2 size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px', color: '#fff' }}>PREMISE.IO</div>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px', color: 'var(--text-primary)' }}>PREMISE.IO</div>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>MASTER CONSOLE</div>
             </div>
           </div>
@@ -123,6 +124,7 @@ export default function AdminLayout({ children }) {
               <span className="dot" style={{ background: '#10b981' }} />
               ALL SYSTEM RUNNING STABLE
             </div>
+            <AdminThemeSettings />
             <ThemeToggle />
           </div>
           <div className="admin-content-inner">{children}</div>

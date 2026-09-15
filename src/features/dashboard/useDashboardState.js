@@ -166,6 +166,7 @@ export function useDashboardState() {
     setMyId('');
     setOrders([]);
     setMenu([]);
+    router.replace('/login');
   };
 
   const apiFetch = createApiFetch(clearAuth);
