@@ -434,8 +434,15 @@ export default function OrgOverviewPage() {
                   <input type="email" className="field-input" placeholder="sarah@venue.com" value={ownerForm.email} onChange={(e) => setOwnerForm({ ...ownerForm, email: e.target.value })} />
                 </div>
                 <div>
-                  <label className="field-label">Phone Number</label>
-                  <input type="tel" className="field-input" placeholder="+1234567890" value={ownerForm.phone} onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value })} />
+                  <label className="field-label">Mobile Number (10 Digits Max)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    className="field-input"
+                    placeholder="9876543210"
+                    value={ownerForm.phone}
+                    onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  />
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ import logger from '@/lib/logger.js';
 import { serializeUser } from '@/lib/serializers.js';
 import { requireAuth, requireMasterAdmin } from '@/lib/auth.js';
 import { ALL_ORG_ROLES, SALT_ROUNDS } from '@/lib/staffHelpers.js';
+import { isValidEmail, isValidPhone } from '@/lib/validators.js';
 import { logAudit } from '@/lib/auditLog.js';
 
 // PATCH /api/admin/organizations/[id]/staff/[staffId] — Master Admin updates staff member
@@ -32,8 +33,25 @@ export async function PATCH(request, { params }) {
 
     const updates = {};
     if (body.name !== undefined) updates.name = body.name;
-    if (body.email !== undefined) updates.email = body.email || null;
-    if (body.phone !== undefined) updates.phone = body.phone || null;
+
+    if (body.email !== undefined && body.email) {
+      if (!isValidEmail(body.email)) {
+        return NextResponse.json({ message: 'Invalid email address format' }, { status: 400 });
+      }
+      updates.email = body.email;
+    } else if (body.email === null || body.email === '') {
+      updates.email = null;
+    }
+
+    if (body.phone !== undefined && body.phone) {
+      if (!isValidPhone(body.phone)) {
+        return NextResponse.json({ message: 'Mobile number must be a valid 10-digit number' }, { status: 400 });
+      }
+      updates.phone = body.phone;
+    } else if (body.phone === null || body.phone === '') {
+      updates.phone = null;
+    }
+
     if (body.spaceId !== undefined) updates.space_id = body.spaceId || null;
 
     if (body.role !== undefined) {

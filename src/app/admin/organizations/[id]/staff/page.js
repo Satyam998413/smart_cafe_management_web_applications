@@ -354,8 +354,15 @@ export default function OrgStaffPage() {
                   <input type="email" className="field-input" placeholder="alex@venue.com" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} />
                 </div>
                 <div>
-                  <label className="field-label">Phone Number</label>
-                  <input type="tel" className="field-input" placeholder="+1234567890" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} />
+                  <label className="field-label">Mobile Number (10 Digits Max)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    className="field-input"
+                    placeholder="9876543210"
+                    value={addForm.phone}
+                    onChange={(e) => setAddForm({ ...addForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  />
                 </div>
               </div>
 
@@ -428,8 +435,15 @@ export default function OrgStaffPage() {
                   <input type="email" className="field-input" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
                 </div>
                 <div>
-                  <label className="field-label">Phone Number</label>
-                  <input type="tel" className="field-input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+                  <label className="field-label">Mobile Number (10 Digits Max)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    className="field-input"
+                    placeholder="9876543210"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  />
                 </div>
               </div>
 

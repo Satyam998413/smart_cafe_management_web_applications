@@ -5,6 +5,7 @@ import logger from '@/lib/logger.js';
 import { serializeUser } from '@/lib/serializers.js';
 import { requireAuth, requireMasterAdmin } from '@/lib/auth.js';
 import { ALL_ORG_ROLES, SALT_ROUNDS } from '@/lib/staffHelpers.js';
+import { isValidEmail, isValidPhone } from '@/lib/validators.js';
 
 // GET /api/admin/organizations/[id]/staff — every owner/manager/cook/waiter account in one org
 export async function GET(request, { params }) {
@@ -55,6 +56,12 @@ export async function POST(request, { params }) {
     }
     if (!email && !phone) {
       return NextResponse.json({ message: 'Email or phone number is required' }, { status: 400 });
+    }
+    if (email && !isValidEmail(email)) {
+      return NextResponse.json({ message: 'Invalid email address format (e.g. user@example.com)' }, { status: 400 });
+    }
+    if (phone && !isValidPhone(phone)) {
+      return NextResponse.json({ message: 'Mobile number must be a valid 10-digit number (e.g. 9876543210)' }, { status: 400 });
     }
 
     const { data: org, error: orgError } = await supabase.from('organizations').select('id').eq('id', id).maybeSingle();
