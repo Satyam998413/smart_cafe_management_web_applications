@@ -19,8 +19,15 @@ export async function PATCH(request, { params }) {
     if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
       return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
     }
-    if ((length !== undefined && length !== null && Number(length) <= 0) || (width !== undefined && width !== null && Number(width) <= 0)) {
-      return NextResponse.json({ message: 'length and width must be greater than 0' }, { status: 400 });
+
+    const numLength = length !== undefined && length !== null && length !== '' ? Number(length) : null;
+    const numWidth = width !== undefined && width !== null && width !== '' ? Number(width) : null;
+
+    if (numLength !== null && (isNaN(numLength) || numLength <= 0)) {
+      return NextResponse.json({ message: 'Length must be a number greater than 0' }, { status: 400 });
+    }
+    if (numWidth !== null && (isNaN(numWidth) || numWidth <= 0)) {
+      return NextResponse.json({ message: 'Width must be a number greater than 0' }, { status: 400 });
     }
 
     const { data: existing, error: fetchError } = await supabase
@@ -42,8 +49,8 @@ export async function PATCH(request, { params }) {
     if (pricePerNight !== undefined) updates.price_per_night = pricePerNight;
     if (description !== undefined) updates.description = description;
     if (maxOccupancy !== undefined) updates.max_occupancy = maxOccupancy;
-    if (length !== undefined) updates.length = length;
-    if (width !== undefined) updates.width = width;
+    if (length !== undefined) updates.length = numLength;
+    if (width !== undefined) updates.width = numWidth;
 
     const { data, error } = await supabase.from('spaces').update(updates).eq('id', id).select('*').single();
     if (error) throw error;
@@ -51,7 +58,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(serializeSpace(data));
   } catch (error) {
     logger.error('Failed to update space', { error: error.message });
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    return NextResponse.json({ message: error.message || 'Server error' }, { status: 500 });
   }
 }
 

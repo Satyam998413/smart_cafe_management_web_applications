@@ -78,9 +78,16 @@ export async function POST(request) {
     if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
       return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
     }
-    if ((length !== undefined && length !== null && Number(length) <= 0) || (width !== undefined && width !== null && Number(width) <= 0)) {
-      return NextResponse.json({ message: 'length and width must be greater than 0' }, { status: 400 });
+    const numLength = length !== undefined && length !== null && length !== '' ? Number(length) : null;
+    const numWidth = width !== undefined && width !== null && width !== '' ? Number(width) : null;
+
+    if (numLength !== null && (isNaN(numLength) || numLength <= 0)) {
+      return NextResponse.json({ message: 'Length must be a number greater than 0' }, { status: 400 });
     }
+    if (numWidth !== null && (isNaN(numWidth) || numWidth <= 0)) {
+      return NextResponse.json({ message: 'Width must be a number greater than 0' }, { status: 400 });
+    }
+
     if (!(await assertSiteInOrg(siteId, auth.orgId))) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
     }
@@ -88,6 +95,7 @@ export async function POST(request) {
     const DB_KIND_MAP = {
       pickup_station: 'table',
       corridor: 'hall',
+      coridor: 'hall',
       building: 'floor'
     };
     const dbKind = DB_KIND_MAP[kind] || kind;
@@ -115,8 +123,8 @@ export async function POST(request) {
         price_per_night: pricePerNight ?? null,
         description: spaceDescription,
         max_occupancy: maxOccupancy ?? null,
-        length: length ?? null,
-        width: width ?? null
+        length: numLength,
+        width: numWidth
       })
       .select('*')
       .single();
@@ -125,6 +133,6 @@ export async function POST(request) {
     return NextResponse.json(serializeSpace(data), { status: 201 });
   } catch (error) {
     logger.error('Failed to create space', { error: error.message });
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    return NextResponse.json({ message: error.message || 'Server error' }, { status: 500 });
   }
 }
