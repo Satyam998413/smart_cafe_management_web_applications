@@ -130,6 +130,12 @@ export function useDashboardState() {
     }
   };
 
+  const getCartQuantity = (itemId) => {
+    return cart
+      .filter((c) => (c.item?._id || c.item?.id) === itemId)
+      .reduce((sum, c) => sum + c.quantity, 0);
+  };
+
   const cartApi = {
     cart,
     addToCart,
@@ -137,6 +143,7 @@ export function useDashboardState() {
     removeFromCart,
     updateCartQuantityAt,
     clearCart,
+    getCartQuantity,
     cartTotal,
     cartItemCount,
     placeCartOrder

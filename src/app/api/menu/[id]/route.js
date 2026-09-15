@@ -40,14 +40,21 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const { name, category, price, description, imageUrl, isAvailable } = await request.json();
+    const { name, category, price, description, imageUrl, images, isAvailable } = await request.json();
 
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (category !== undefined) updates.category = category;
     if (price !== undefined) updates.price = parseFloat(price);
     if (description !== undefined) updates.description = description;
-    if (imageUrl !== undefined) updates.image_url = imageUrl;
+    if (images !== undefined && Array.isArray(images)) {
+      if (images.length > 5) {
+        return NextResponse.json({ message: 'Maximum 5 images allowed per menu item' }, { status: 400 });
+      }
+      updates.image_url = JSON.stringify(images.slice(0, 5));
+    } else if (imageUrl !== undefined) {
+      updates.image_url = imageUrl;
+    }
     if (isAvailable !== undefined) updates.is_available = isAvailable;
 
     const { data, error } = await scopeToOrg(supabase.from('menu_items').update(updates).eq('id', id), auth.orgId)

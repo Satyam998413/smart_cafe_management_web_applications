@@ -32,6 +32,15 @@ export async function POST(request, { params }) {
       return NextResponse.json({ message: 'Space not found' }, { status: 404 });
     }
 
+    const { count, error: countError } = await supabase
+      .from('space_images')
+      .select('*', { count: 'exact', head: true })
+      .eq('space_id', id);
+    if (countError) throw countError;
+    if (count >= 5) {
+      return NextResponse.json({ message: 'Maximum 5 images allowed per room' }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from('space_images')
       .insert({ space_id: id, image_url: imageUrl, sort_order: sortOrder ?? 0 })

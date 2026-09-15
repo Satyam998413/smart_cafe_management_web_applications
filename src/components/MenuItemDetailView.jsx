@@ -83,6 +83,10 @@ export default function MenuItemDetailView({ item, onBack, onConfirm }) {
     onConfirm(quantity, selectedOptionsList());
   };
 
+  const imagesList = Array.isArray(item.images) && item.images.length > 0 ? item.images : (item.imageUrl ? [item.imageUrl] : []);
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const activeImageUrl = imagesList[activeImgIndex] || item.imageUrl || '';
+
   return (
     <motion.div
       className="glass-card"
@@ -101,10 +105,10 @@ export default function MenuItemDetailView({ item, onBack, onConfirm }) {
           overflow: 'hidden'
         }}
       >
-        {item.imageUrl && !imgError ? (
+        {activeImageUrl && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.imageUrl}
+            src={activeImageUrl}
             alt={item.name}
             onError={() => setImgError(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -133,6 +137,34 @@ export default function MenuItemDetailView({ item, onBack, onConfirm }) {
         >
           <ArrowLeft size={16} />
         </button>
+
+        {/* Thumbnail gallery overlay for multi-image items */}
+        {imagesList.length > 1 && (
+          <div style={{ position: 'absolute', bottom: '0.75rem', right: '0.85rem', display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.4)', padding: '0.25rem', borderRadius: 'var(--radius-md)' }}>
+            {imagesList.slice(0, 5).map((imgUrl, idx) => (
+              <button
+                key={`${imgUrl}-${idx}`}
+                type="button"
+                onClick={() => {
+                  setImgError(false);
+                  setActiveImgIndex(idx);
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 'var(--radius-sm)',
+                  overflow: 'hidden',
+                  padding: 0,
+                  border: activeImgIndex === idx ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.5)',
+                  cursor: 'pointer'
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            ))}
+          </div>
+        )}
         <span
           style={{
             position: 'absolute',

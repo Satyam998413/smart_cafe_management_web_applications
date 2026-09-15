@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Sparkles, Bot, Server, TestTube } from 'lucide-react';
 import { jsonBody } from '@/lib/apiClient';
 import { useAdmin } from '@/features/admin/AdminContext';
 import Button from '@/components/ui/Button';
@@ -9,13 +10,6 @@ import AiTestPanel from '@/features/admin/AiTestPanel';
 
 const EMPTY_FORM = { provider: '', apiKey: '', baseUrl: '', model: '' };
 
-// The platform-wide AI default(s) — tried in src/lib/aiClient.js's
-// sendChatCompletion after an org's own credentials but before the
-// raw-env-var global providers, so a tenant with no working AI credential
-// of their own still gets a working Smart Waiter/AI Chat. Same shape as
-// the per-org AI Credentials tab (src/app/admin/organizations/[id]/ai/
-// page.js): AiCredentialList owns the "what's configured" list (priority,
-// active state, delete), this page only owns the add form.
 const PROVIDER_PRESETS = [
   { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
   { id: 'groq', label: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile' },
@@ -24,7 +18,7 @@ const PROVIDER_PRESETS = [
   { id: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-3-5-sonnet-20241022' },
   { id: 'ollama', label: 'Ollama (Local LLM)', baseUrl: 'http://localhost:11434/v1', defaultModel: 'llama3' },
   { id: 'lmstudio', label: 'LM Studio (Local)', baseUrl: 'http://localhost:1234/v1', defaultModel: 'local-model' },
-  { id: 'custom', label: 'Custom Provider (Any Base URL)', baseUrl: '', defaultModel: '' }
+  { id: 'custom', label: 'Custom Provider', baseUrl: '', defaultModel: '' }
 ];
 
 export default function AiConfigurationPage() {
@@ -86,96 +80,184 @@ export default function AiConfigurationPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div>
-        <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Configured platform models</h2>
-        <AiCredentialList
-          apiFetch={apiFetch}
-          listEndpoint="/admin/ai-configuration"
-          manageEndpoint={(credentialId) => `/admin/ai-configuration/${credentialId}`}
-          refreshToken={listRefreshToken}
-          onListChange={setCredentials}
-        />
-      </div>
-
-      <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: 620 }}>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 300px Left Sidebar */}
+      <div
+        className="glass-card"
+        style={{
+          width: 300,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>Add a platform default AI provider</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            Used by every organization that has no working AI credential of its own. Supports custom API Base URLs (OpenAI, Groq, Gemini, Ollama local, vLLM, custom enterprise proxies). Keys are encrypted at rest.
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Master AI Config</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Platform fallback LLM & voice provider credentials.
           </p>
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="platform-ai-preset">
-            Quick Provider Preset
-          </label>
-          <select
-            id="platform-ai-preset"
-            className="field-input"
-            value={presetSelected}
-            onChange={(e) => handleSelectPreset(e.target.value)}
-          >
-            <option value="">-- Choose Provider Preset or Custom --</option>
-            {PROVIDER_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Active AI Models
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Configured Models</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{credentials.length}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Default</span>
+            <span style={{ fontWeight: 700, color: '#10b981' }}>{credentials.find((c) => c.isActive)?.provider || 'None'}</span>
+          </div>
+        </div>
+
+        {/* Quick Preset Selector in Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Quick Provider Presets
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {PROVIDER_PRESETS.slice(0, 5).map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`admin-sidebar-link ${presetSelected === p.id ? 'active' : ''}`}
+                onClick={() => handleSelectPreset(p.id)}
+                style={{ fontSize: '0.82rem', padding: '0.5rem 0.75rem', border: '1px solid var(--border)' }}
+              >
+                <Sparkles size={14} />
                 {p.label}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
+      </div>
 
+      {/* Right Main Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div>
-          <label className="field-label" htmlFor="platform-ai-provider">
-            Provider Name
-          </label>
-          <input
-            id="platform-ai-provider"
-            type="text"
-            className="field-input"
-            value={form.provider}
-            onChange={(e) => set({ provider: e.target.value })}
-            placeholder="openai, groq, openrouter, gemini, ollama, custom…"
-            required
+          <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Configured platform models</h2>
+          <AiCredentialList
+            apiFetch={apiFetch}
+            listEndpoint="/admin/ai-configuration"
+            manageEndpoint={(credentialId) => `/admin/ai-configuration/${credentialId}`}
+            refreshToken={listRefreshToken}
+            onListChange={setCredentials}
           />
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="platform-ai-key">
-            API Key
-          </label>
-          <input id="platform-ai-key" type="password" className="field-input" value={form.apiKey} onChange={(e) => set({ apiKey: e.target.value })} placeholder="sk-…" required />
-        </div>
+        <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>Add a platform default AI provider</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              Used by every organization that has no working AI credential of its own. Supports custom API Base URLs (OpenAI, Groq, Gemini, Ollama local, vLLM, custom enterprise proxies). Keys are encrypted at rest.
+            </p>
+          </div>
 
-        <div>
-          <label className="field-label" htmlFor="platform-ai-base-url">
-            Base URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(Custom API Endpoint URL)</span>
-          </label>
-          <input
-            id="platform-ai-base-url"
-            type="url"
-            className="field-input"
-            value={form.baseUrl}
-            onChange={(e) => set({ baseUrl: e.target.value })}
-            placeholder="e.g. https://api.openai.com/v1 or http://localhost:11434/v1"
-          />
-        </div>
+          <div>
+            <label className="field-label" htmlFor="platform-ai-preset">
+              Quick Provider Preset
+            </label>
+            <select
+              id="platform-ai-preset"
+              className="field-input"
+              value={presetSelected}
+              onChange={(e) => handleSelectPreset(e.target.value)}
+            >
+              <option value="">-- Choose Provider Preset or Custom --</option>
+              {PROVIDER_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="field-label" htmlFor="platform-ai-model">
-            Model Name <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
-          </label>
-          <input id="platform-ai-model" type="text" className="field-input" value={form.model} onChange={(e) => set({ model: e.target.value })} placeholder="e.g. gpt-4o or deepseek/deepseek-v4-flash" />
-        </div>
+          <div>
+            <label className="field-label" htmlFor="platform-ai-provider">
+              Provider Name
+            </label>
+            <input
+              id="platform-ai-provider"
+              type="text"
+              className="field-input"
+              value={form.provider}
+              onChange={(e) => set({ provider: e.target.value })}
+              placeholder="openai, groq, openrouter, gemini, ollama, custom…"
+              required
+            />
+          </div>
 
-        {error && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{error}</div>}
+          <div>
+            <label className="field-label" htmlFor="platform-ai-key">
+              API Key
+            </label>
+            <input
+              id="platform-ai-key"
+              type="password"
+              className="field-input"
+              value={form.apiKey}
+              onChange={(e) => set({ apiKey: e.target.value })}
+              placeholder="sk-…"
+              required
+            />
+          </div>
 
-        <Button type="submit" variant="primary" loading={saving} disabled={saving}>
-          {saving ? 'Saving…' : 'Save platform default'}
-        </Button>
-      </form>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label className="field-label" htmlFor="platform-ai-base">
+                Base URL <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional override)</span>
+              </label>
+              <input
+                id="platform-ai-base"
+                type="url"
+                className="field-input"
+                value={form.baseUrl}
+                onChange={(e) => set({ baseUrl: e.target.value })}
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="platform-ai-model">
+                Default Model <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional override)</span>
+              </label>
+              <input
+                id="platform-ai-model"
+                type="text"
+                className="field-input"
+                value={form.model}
+                onChange={(e) => set({ model: e.target.value })}
+                placeholder="gpt-4o"
+              />
+            </div>
+          </div>
 
-      <AiTestPanel apiFetch={apiFetch} testEndpoint="/admin/ai-configuration/test" credentials={credentials} />
+          {error && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{error}</div>}
+
+          <div>
+            <Button type="submit" variant="primary" loading={saving} disabled={saving}>
+              {saving ? 'Adding…' : 'Add platform default model'}
+            </Button>
+          </div>
+        </form>
+
+        <AiTestPanel testEndpoint="/api/admin/ai-configuration/test" title="Test platform default AI" />
+      </div>
     </div>
   );
 }

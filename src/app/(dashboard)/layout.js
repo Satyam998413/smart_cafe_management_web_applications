@@ -11,6 +11,8 @@ import { useDashboardState } from '@/features/dashboard/useDashboardState';
 import { springs } from '@/lib/motionTokens';
 import { applyAppTheme } from '@/lib/themeManager';
 
+import WebSplashScreen from '@/components/WebSplashScreen';
+
 // Route-scoped role gates — a customer hitting /staff (or a staff member
 // hitting /smart-ai) directly by URL gets bounced to /orders instead of
 // silently rendering nothing, which is what the old activeTab-guard version
@@ -82,7 +84,8 @@ export default function DashboardLayout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken]);
 
-  if (authToken === undefined || !authToken) return null;
+  if (authToken === undefined) return <WebSplashScreen />;
+  if (!authToken) return null;
 
   return (
     <DashboardContext.Provider value={state}>

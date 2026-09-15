@@ -228,31 +228,57 @@ export default function RoomsPage({ apiFetch, authRole }) {
   };
 
   const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (!file || !photosTarget) return;
+    if (files.length === 0 || !photosTarget) return;
 
     setPhotoError('');
+    const currentCount = photosTarget.images?.length || 0;
+    if (currentCount + files.length > 5) {
+      setPhotoError(`Maximum 5 images allowed per room. Room currently has ${currentCount} photo(s).`);
+      return;
+    }
+
+    for (const file of files) {
+      if (!file.type || !file.type.startsWith('image/')) {
+        setPhotoError('All uploaded files must be images.');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        setPhotoError(`File "${file.name}" exceeds maximum allowed size of 3 MB.`);
+        return;
+      }
+    }
+
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', 'room');
-      const uploadRes = await apiFetch('/uploads', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) {
-        setPhotoError(uploadData.message || 'Upload failed.');
-        return;
+      const newAttached = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'rooms');
+        formData.append('entityId', photosTarget.id);
+
+        const uploadRes = await apiFetch('/uploads', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          setPhotoError(uploadData.message || 'Upload failed.');
+          return;
+        }
+
+        const attachRes = await apiFetch(`/spaces/${photosTarget.id}/images`, {
+          method: 'POST',
+          ...jsonBody({ imageUrl: uploadData.url })
+        });
+        const attached = await attachRes.json();
+        if (!attachRes.ok) {
+          setPhotoError(attached.message || 'Failed to attach photo.');
+          return;
+        }
+        newAttached.push(attached);
       }
 
-      const attachRes = await apiFetch(`/spaces/${photosTarget.id}/images`, { method: 'POST', ...jsonBody({ imageUrl: uploadData.url }) });
-      const attached = await attachRes.json();
-      if (!attachRes.ok) {
-        setPhotoError(attached.message || 'Failed to attach photo.');
-        return;
-      }
-
-      syncRoomImages(photosTarget.id, [...(photosTarget.images || []), attached]);
+      syncRoomImages(photosTarget.id, [...(photosTarget.images || []), ...newAttached]);
     } catch (e) {
       console.error('Failed to upload room photo:', e);
       setPhotoError('Network error — please try again.');
@@ -599,7 +625,7 @@ export default function RoomsPage({ apiFetch, authRole }) {
         <Modal onClose={() => setPhotosTarget(null)} maxWidth={520}>
           <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ color: 'var(--text-primary)' }}>Photos — {photosTarget.label}</h2>
+              <h2 style={{ color: 'var(--text-primary)' }}>Photos — {photosTarget.label} ({(photosTarget.images || []).length}/5 max)</h2>
               <button className="icon-btn" onClick={() => setPhotosTarget(null)} aria-label="Close photo manager">
                 <X size={16} />
               </button>
@@ -633,18 +659,27 @@ export default function RoomsPage({ apiFetch, authRole }) {
 
             {isOwner && (
               <>
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileChange} style={{ display: 'none' }} id="room-photo-input" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={(photosTarget.images || []).length >= 5}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                  id="room-photo-input"
+                />
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={uploading}
+                  disabled={uploading || (photosTarget.images || []).length >= 5}
                   loading={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  aria-label="Upload a new photo"
+                  aria-label="Upload photo(s)"
                 >
-                  {uploading ? 'Uploading…' : (
+                  {uploading ? 'Uploading…' : (photosTarget.images || []).length >= 5 ? 'Max 5 photos reached' : (
                     <>
-                      <ImagePlus size={15} /> Upload photo
+                      <ImagePlus size={15} /> Upload photo(s) (max 5)
                     </>
                   )}
                 </Button>

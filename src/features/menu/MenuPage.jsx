@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, X, ShoppingCart } from 'lucide-react';
+import { Search, Plus, X, ShoppingCart, UtensilsCrossed } from 'lucide-react';
 import MenuCard from '@/components/MenuCard';
 import MenuItemModal from '@/components/MenuItemModal';
 import MenuItemDetailView from '@/components/MenuItemDetailView';
@@ -250,6 +250,7 @@ export default function MenuPage({ menu, loading, setMenu, authRole, apiFetch, c
         <MenuItemModal
           mode={modalMode}
           initialItem={editingItem}
+          apiFetch={apiFetch}
           onClose={() => {
             setShowModal(false);
             setEditingItem(null);

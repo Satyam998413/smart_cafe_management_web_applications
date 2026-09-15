@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Ticket, Pencil, RotateCcw } from 'lucide-react';
+import { Ticket, Pencil, RotateCcw, Plus } from 'lucide-react';
 import { useAdmin } from '@/features/admin/AdminContext';
 import { jsonBody } from '@/lib/apiClient';
 import Button from '@/components/ui/Button';
@@ -19,7 +19,6 @@ const DISCOUNT_TYPES = [
   { value: 'percent', label: 'Percent (%)' }
 ];
 
-// yyyy-MM-ddTHH:mm for a datetime-local input, from an ISO string.
 const toLocalInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 16) : '');
 
 const EMPTY_FORM = {
@@ -34,11 +33,6 @@ const EMPTY_FORM = {
   isActive: true
 };
 
-// Master Admin's write surface for coupon codes (plan Phase 1B.c) — same
-// list+create-modal structure as /admin/coin-plans and
-// src/app/admin/organizations/page.js. Before this page existed the only
-// coupon code paths were consumption (apply-coupon on a bill, coin
-// purchase) — nothing could ever create one.
 export default function CouponsPage() {
   const { apiFetch } = useAdmin();
   const [coupons, setCoupons] = useState([]);
@@ -46,7 +40,7 @@ export default function CouponsPage() {
   const [error, setError] = useState('');
 
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('add'); // 'add' | 'edit'
+  const [formMode, setFormMode] = useState('add');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -72,7 +66,6 @@ export default function CouponsPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,98 +144,147 @@ export default function CouponsPage() {
     }
   };
 
+  const stats = useMemo(() => {
+    const total = coupons.length;
+    const active = coupons.filter((c) => c.isActive).length;
+    return { total, active };
+  }, [coupons]);
+
   return (
-    <div>
-      <div className="admin-page-header">
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 300px Left Control Sidebar */}
+      <div
+        className="glass-card"
+        style={{
+          width: 300,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}
+      >
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--text-primary)' }}>Coupons</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            One-time-use discount codes for bill checkout or coin recharges.
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Coupons</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Discount codes for bill checkout or coin recharges.
           </p>
         </div>
-        <Button variant="primary" onClick={openAdd}>
-          + New coupon
-        </Button>
+
+        <button className="btn-orange" onClick={openAdd} style={{ justifyContent: 'center' }}>
+          <Plus size={16} /> New coupon
+        </button>
+
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Coupons Overview
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Coupons</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{stats.total}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Codes</span>
+            <span style={{ fontWeight: 700, color: '#10b981' }}>{stats.active}</span>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Skeleton width="18%" height="1rem" />
-              <Skeleton width="18%" height="1rem" />
-              <Skeleton width="14%" height="1rem" />
-              <Skeleton width="20%" height="1rem" />
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
-          <Button variant="secondary" onClick={load}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : coupons.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <Ticket size={32} strokeWidth={1.5} />
-          No coupons yet.
-          <Button variant="primary" size="sm" onClick={openAdd}>
-            Create the first one
-          </Button>
-        </div>
-      ) : (
-        <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Scope</th>
-                  <th>Discount</th>
-                  <th>Uses (total / per org)</th>
-                  <th>Valid until</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {coupons.map((coupon) => (
-                  <motion.tr key={coupon.id} variants={rowVariants}>
-                    <td>
-                      <strong>{coupon.code}</strong>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{SCOPES.find((s) => s.value === coupon.scope)?.label || coupon.scope}</td>
-                    <td>{coupon.discountType === 'percent' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>
-                      {coupon.maxUsesTotal ?? '∞'} / {coupon.maxUsesPerOrg}
-                    </td>
-                    <td style={{ color: 'var(--text-muted)' }}>{new Date(coupon.validUntil).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`role-badge ${coupon.isActive ? 'role-manager' : 'role-customer'}`}>
-                        {coupon.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="icon-btn" onClick={() => openEdit(coupon)} title="Edit">
-                          <Pencil size={15} />
-                        </button>
-                        <Button variant="ghost" size="sm" onClick={() => toggleActive(coupon)}>
-                          {coupon.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Right Main Content Panel */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {loading ? (
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <Skeleton width="18%" height="1rem" />
+                <Skeleton width="18%" height="1rem" />
+                <Skeleton width="14%" height="1rem" />
+                <Skeleton width="20%" height="1rem" />
+              </div>
+            ))}
           </div>
-        </motion.div>
-      )}
+        ) : error ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
+            <Button variant="secondary" onClick={load}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : coupons.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <Ticket size={32} strokeWidth={1.5} />
+            No coupons yet.
+            <Button variant="primary" size="sm" onClick={openAdd}>
+              Create the first one
+            </Button>
+          </div>
+        ) : (
+          <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Scope</th>
+                    <th>Discount</th>
+                    <th>Uses (total / per org)</th>
+                    <th>Valid until</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map((coupon) => (
+                    <motion.tr key={coupon.id} variants={rowVariants}>
+                      <td>
+                        <strong>{coupon.code}</strong>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{SCOPES.find((s) => s.value === coupon.scope)?.label || coupon.scope}</td>
+                      <td>{coupon.discountType === 'percent' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>
+                        {coupon.maxUsesTotal === null || coupon.maxUsesTotal === undefined ? '∞' : coupon.maxUsesTotal} / {coupon.maxUsesPerOrg}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {new Date(coupon.validUntil).toLocaleDateString()}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${coupon.isActive ? 'available' : 'unavailable'}`}>
+                          {coupon.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button className="icon-btn" onClick={() => openEdit(coupon)} title="Edit">
+                            <Pencil size={15} />
+                          </button>
+                          <Button variant="ghost" size="sm" onClick={() => toggleActive(coupon)}>
+                            {coupon.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={480}>
@@ -250,25 +292,26 @@ export default function CouponsPage() {
             <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>{formMode === 'add' ? 'New coupon' : 'Edit coupon'}</h2>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label className="field-label" htmlFor="cpn-code">
-                  Code
+                <label className="field-label" htmlFor="c-code">
+                  Coupon code
                 </label>
                 <input
-                  id="cpn-code"
+                  id="c-code"
                   type="text"
                   className="field-input"
-                  placeholder="WELCOME10"
+                  placeholder="WELCOME50"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
                   required
                 />
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="field-label" htmlFor="cpn-scope">
+                  <label className="field-label" htmlFor="c-scope">
                     Scope
                   </label>
-                  <select id="cpn-scope" className="field-input" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
+                  <select id="c-scope" className="field-input" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
                     {SCOPES.map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
@@ -277,15 +320,10 @@ export default function CouponsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="field-label" htmlFor="cpn-discount-type">
+                  <label className="field-label" htmlFor="c-type">
                     Discount type
                   </label>
-                  <select
-                    id="cpn-discount-type"
-                    className="field-input"
-                    value={form.discountType}
-                    onChange={(e) => setForm({ ...form, discountType: e.target.value })}
-                  >
+                  <select id="c-type" className="field-input" value={form.discountType} onChange={(e) => setForm({ ...form, discountType: e.target.value })}>
                     {DISCOUNT_TYPES.map((d) => (
                       <option key={d.value} value={d.value}>
                         {d.label}
@@ -294,58 +332,63 @@ export default function CouponsPage() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="field-label" htmlFor="cpn-discount-value">
-                  Discount value
-                </label>
-                <input
-                  id="cpn-discount-value"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="field-input"
-                  value={form.discountValue}
-                  onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
-                  required
-                />
-              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="field-label" htmlFor="cpn-max-total">
-                    Max total uses <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(blank = unlimited)</span>
+                  <label className="field-label" htmlFor="c-value">
+                    Value ({form.discountType === 'percent' ? '%' : '₹'})
                   </label>
                   <input
-                    id="cpn-max-total"
+                    id="c-value"
                     type="number"
-                    min="1"
-                    step="1"
+                    min="0.01"
+                    step="0.01"
                     className="field-input"
-                    value={form.maxUsesTotal}
-                    onChange={(e) => setForm({ ...form, maxUsesTotal: e.target.value })}
+                    value={form.discountValue}
+                    onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
+                    required
                   />
                 </div>
                 <div>
-                  <label className="field-label" htmlFor="cpn-max-per-org">
+                  <label className="field-label" htmlFor="c-per-org">
                     Max uses per org
                   </label>
                   <input
-                    id="cpn-max-per-org"
+                    id="c-per-org"
                     type="number"
                     min="1"
                     step="1"
                     className="field-input"
                     value={form.maxUsesPerOrg}
                     onChange={(e) => setForm({ ...form, maxUsesPerOrg: e.target.value })}
+                    required
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="field-label" htmlFor="c-max-total">
+                  Max uses total <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(blank = unlimited)</span>
+                </label>
+                <input
+                  id="c-max-total"
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="field-input"
+                  placeholder="Unlimited"
+                  value={form.maxUsesTotal}
+                  onChange={(e) => setForm({ ...form, maxUsesTotal: e.target.value })}
+                />
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="field-label" htmlFor="cpn-valid-from">
+                  <label className="field-label" htmlFor="c-valid-from">
                     Valid from <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
                   </label>
                   <input
-                    id="cpn-valid-from"
+                    id="c-valid-from"
                     type="datetime-local"
                     className="field-input"
                     value={form.validFrom}
@@ -353,11 +396,11 @@ export default function CouponsPage() {
                   />
                 </div>
                 <div>
-                  <label className="field-label" htmlFor="cpn-valid-until">
-                    Valid until
+                  <label className="field-label" htmlFor="c-valid-until">
+                    Valid until *
                   </label>
                   <input
-                    id="cpn-valid-until"
+                    id="c-valid-until"
                     type="datetime-local"
                     className="field-input"
                     value={form.validUntil}
@@ -366,11 +409,14 @@ export default function CouponsPage() {
                   />
                 </div>
               </div>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
                 Active
               </label>
+
               {formError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{formError}</div>}
+
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <Button type="button" variant="ghost" fullWidth onClick={() => setShowForm(false)}>
                   Cancel

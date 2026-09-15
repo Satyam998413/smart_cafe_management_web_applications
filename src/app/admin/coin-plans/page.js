@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, Pencil, RotateCcw } from 'lucide-react';
+import { Coins, Pencil, RotateCcw, Plus } from 'lucide-react';
 import { useAdmin } from '@/features/admin/AdminContext';
 import { jsonBody } from '@/lib/apiClient';
 import Button from '@/components/ui/Button';
@@ -12,12 +12,6 @@ import { listVariants, rowVariants } from '@/components/ui/motionVariants';
 
 const EMPTY_FORM = { name: '', priceInr: '', coinsGranted: '', bonusCoins: '0', sortOrder: '0', isActive: true };
 
-// Master Admin's write surface for the coin recharge catalog (plan Phase
-// 1B.c) — mirrors src/app/admin/organizations/page.js's list+create
-// structure exactly (skeleton/empty/error states, framer-motion stagger,
-// design tokens). Before this page existed there was no way to create a
-// coin_plans row through the app at all — only the tenant-facing read
-// route (/api/wallet/coin-plans) existed.
 export default function CoinPlansPage() {
   const { apiFetch } = useAdmin();
   const [plans, setPlans] = useState([]);
@@ -25,7 +19,7 @@ export default function CoinPlansPage() {
   const [error, setError] = useState('');
 
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('add'); // 'add' | 'edit'
+  const [formMode, setFormMode] = useState('add');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -51,7 +45,6 @@ export default function CoinPlansPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -120,96 +113,143 @@ export default function CoinPlansPage() {
     }
   };
 
+  const stats = useMemo(() => {
+    const total = plans.length;
+    const active = plans.filter((p) => p.isActive).length;
+    return { total, active };
+  }, [plans]);
+
   return (
-    <div>
-      <div className="admin-page-header">
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 300px Left Sidebar */}
+      <div
+        className="glass-card"
+        style={{
+          width: 300,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}
+      >
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--text-primary)' }}>Coin plans</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            The recharge catalog every tenant’s Owner buys coins from.
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Coin Plans</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Recharge catalog for platform coin purchases.
           </p>
         </div>
-        <Button variant="primary" onClick={openAdd}>
-          + New plan
-        </Button>
+
+        <button className="btn-orange" onClick={openAdd} style={{ justifyContent: 'center' }}>
+          <Plus size={16} /> New coin plan
+        </button>
+
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Catalog Stats
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Plans</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{stats.total}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Catalog</span>
+            <span style={{ fontWeight: 700, color: '#10b981' }}>{stats.active}</span>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Skeleton width="22%" height="1rem" />
-              <Skeleton width="14%" height="1rem" />
-              <Skeleton width="14%" height="1rem" />
-              <Skeleton width="14%" height="1rem" />
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
-          <Button variant="secondary" onClick={load}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : plans.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <Coins size={32} strokeWidth={1.5} />
-          No coin plans yet.
-          <Button variant="primary" size="sm" onClick={openAdd}>
-            Create the first one
-          </Button>
-        </div>
-      ) : (
-        <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Price</th>
-                  <th>Coins</th>
-                  <th>Bonus</th>
-                  <th>Status</th>
-                  <th>Sort</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {plans.map((plan) => (
-                  <motion.tr key={plan.id} variants={rowVariants}>
-                    <td>
-                      <strong>{plan.name}</strong>
-                    </td>
-                    <td>₹{plan.priceInr}</td>
-                    <td>{plan.coinsGranted}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{plan.bonusCoins > 0 ? `+${plan.bonusCoins}` : '—'}</td>
-                    <td>
-                      <span className={`role-badge ${plan.isActive ? 'role-manager' : 'role-customer'}`}>
-                        {plan.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--text-muted)' }}>{plan.sortOrder}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="icon-btn" onClick={() => openEdit(plan)} title="Edit">
-                          <Pencil size={15} />
-                        </button>
-                        <Button variant="ghost" size="sm" onClick={() => toggleActive(plan)}>
-                          {plan.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Right Content Table */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {loading ? (
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <Skeleton width="22%" height="1rem" />
+                <Skeleton width="14%" height="1rem" />
+                <Skeleton width="14%" height="1rem" />
+                <Skeleton width="14%" height="1rem" />
+              </div>
+            ))}
           </div>
-        </motion.div>
-      )}
+        ) : error ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
+            <Button variant="secondary" onClick={load}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : plans.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <Coins size={32} strokeWidth={1.5} />
+            No coin plans yet.
+            <Button variant="primary" size="sm" onClick={openAdd}>
+              Create the first one
+            </Button>
+          </div>
+        ) : (
+          <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Coins</th>
+                    <th>Bonus</th>
+                    <th>Status</th>
+                    <th>Sort</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plans.map((plan) => (
+                    <motion.tr key={plan.id} variants={rowVariants}>
+                      <td>
+                        <strong>{plan.name}</strong>
+                      </td>
+                      <td>₹{plan.priceInr}</td>
+                      <td>{plan.coinsGranted}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{plan.bonusCoins > 0 ? `+${plan.bonusCoins}` : '—'}</td>
+                      <td>
+                        <span className={`status-badge ${plan.isActive ? 'available' : 'unavailable'}`}>
+                          {plan.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--text-muted)' }}>{plan.sortOrder}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button className="icon-btn" onClick={() => openEdit(plan)} title="Edit">
+                            <Pencil size={15} />
+                          </button>
+                          <Button variant="ghost" size="sm" onClick={() => toggleActive(plan)}>
+                            {plan.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={440}>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Megaphone, Pencil, RotateCcw } from 'lucide-react';
+import { Megaphone, Pencil, RotateCcw, Plus } from 'lucide-react';
 import { useAdmin } from '@/features/admin/AdminContext';
 import { jsonBody } from '@/lib/apiClient';
 import Button from '@/components/ui/Button';
@@ -32,11 +32,6 @@ const EMPTY_FORM = {
   isActive: true
 };
 
-// Master Admin's write surface for platform-wide promotional offers (plan
-// Phase 1B.c) — same list+create-modal structure as /admin/coin-plans and
-// /admin/coupons. platform_offers has no existing read path anywhere in
-// this codebase yet, so this page (and its GET/POST/PATCH routes) is the
-// first place the table is ever touched.
 export default function OffersPage() {
   const { apiFetch } = useAdmin();
   const [offers, setOffers] = useState([]);
@@ -44,7 +39,7 @@ export default function OffersPage() {
   const [error, setError] = useState('');
 
   const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('add'); // 'add' | 'edit'
+  const [formMode, setFormMode] = useState('add');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -70,7 +65,6 @@ export default function OffersPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,99 +141,150 @@ export default function OffersPage() {
     }
   };
 
+  const stats = useMemo(() => {
+    const total = offers.length;
+    const active = offers.filter((o) => o.isActive).length;
+    return { total, active };
+  }, [offers]);
+
   return (
-    <div>
-      <div className="admin-page-header">
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 300px Left Control Sidebar */}
+      <div
+        className="glass-card"
+        style={{
+          width: 300,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}
+      >
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--text-primary)' }}>Platform offers</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            Time-bounded bonus coins layered on top of a recharge, platform-wide or new-orgs-only.
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Offers</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Platform-wide promotional campaigns & coin bonuses.
           </p>
         </div>
-        <Button variant="primary" onClick={openAdd}>
-          + New offer
-        </Button>
+
+        <button className="btn-orange" onClick={openAdd} style={{ justifyContent: 'center' }}>
+          <Plus size={16} /> New offer
+        </button>
+
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            Campaign Metrics
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Offers</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{stats.total}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Offers</span>
+            <span style={{ fontWeight: 700, color: '#10b981' }}>{stats.active}</span>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Skeleton width="22%" height="1rem" />
-              <Skeleton width="18%" height="1rem" />
-              <Skeleton width="18%" height="1rem" />
-              <Skeleton width="14%" height="1rem" />
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
-          <Button variant="secondary" onClick={load}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : offers.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <Megaphone size={32} strokeWidth={1.5} />
-          No offers yet.
-          <Button variant="primary" size="sm" onClick={openAdd}>
-            Launch the first one
-          </Button>
-        </div>
-      ) : (
-        <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Bonus</th>
-                  <th>Applies to</th>
-                  <th>Window</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {offers.map((offer) => (
-                  <motion.tr key={offer.id} variants={rowVariants}>
-                    <td>
-                      <strong>{offer.name}</strong>
-                      {offer.description && (
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{offer.description}</div>
-                      )}
-                    </td>
-                    <td>{offer.bonusType === 'percent_extra_coins' ? `+${offer.bonusValue}%` : `+${offer.bonusValue} coins`}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{APPLIES_TO.find((a) => a.value === offer.appliesTo)?.label || offer.appliesTo}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                      {new Date(offer.startsAt).toLocaleDateString()} – {new Date(offer.endsAt).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <span className={`role-badge ${offer.isActive ? 'role-manager' : 'role-customer'}`}>
-                        {offer.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="icon-btn" onClick={() => openEdit(offer)} title="Edit">
-                          <Pencil size={15} />
-                        </button>
-                        <Button variant="ghost" size="sm" onClick={() => toggleActive(offer)}>
-                          {offer.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Right Content Table */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {loading ? (
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <Skeleton width="22%" height="1rem" />
+                <Skeleton width="18%" height="1rem" />
+                <Skeleton width="18%" height="1rem" />
+                <Skeleton width="14%" height="1rem" />
+              </div>
+            ))}
           </div>
-        </motion.div>
-      )}
+        ) : error ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
+            <Button variant="secondary" onClick={load}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : offers.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <Megaphone size={32} strokeWidth={1.5} />
+            No promotional offers yet.
+            <Button variant="primary" size="sm" onClick={openAdd}>
+              Create the first one
+            </Button>
+          </div>
+        ) : (
+          <motion.div className="glass-card" style={{ overflow: 'hidden' }} variants={listVariants} initial="hidden" animate="show">
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Bonus</th>
+                    <th>Applies to</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {offers.map((offer) => (
+                    <motion.tr key={offer.id} variants={rowVariants}>
+                      <td>
+                        <strong>{offer.name}</strong>
+                        {offer.description && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{offer.description}</div>
+                        )}
+                      </td>
+                      <td>
+                        {offer.bonusType === 'percent_extra_coins' ? `+${offer.bonusValue}% coins` : `+${offer.bonusValue} coins`}
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {APPLIES_TO.find((a) => a.value === offer.appliesTo)?.label || offer.appliesTo}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {new Date(offer.startsAt).toLocaleDateString()} – {new Date(offer.endsAt).toLocaleDateString()}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${offer.isActive ? 'available' : 'unavailable'}`}>
+                          {offer.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button className="icon-btn" onClick={() => openEdit(offer)} title="Edit">
+                            <Pencil size={15} />
+                          </button>
+                          <Button variant="ghost" size="sm" onClick={() => toggleActive(offer)}>
+                            {offer.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={480}>
@@ -254,30 +299,32 @@ export default function OffersPage() {
                   id="of-name"
                   type="text"
                   className="field-input"
-                  placeholder="Diwali Bonus"
+                  placeholder="Diwali Bonus 20%"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                 />
               </div>
+
               <div>
-                <label className="field-label" htmlFor="of-description">
+                <label className="field-label" htmlFor="of-desc">
                   Description <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
                 </label>
-                <input
-                  id="of-description"
-                  type="text"
+                <textarea
+                  id="of-desc"
                   className="field-input"
+                  rows={2}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                 />
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="field-label" htmlFor="of-bonus-type">
+                  <label className="field-label" htmlFor="of-btype">
                     Bonus type
                   </label>
-                  <select id="of-bonus-type" className="field-input" value={form.bonusType} onChange={(e) => setForm({ ...form, bonusType: e.target.value })}>
+                  <select id="of-btype" className="field-input" value={form.bonusType} onChange={(e) => setForm({ ...form, bonusType: e.target.value })}>
                     {BONUS_TYPES.map((b) => (
                       <option key={b.value} value={b.value}>
                         {b.label}
@@ -286,11 +333,11 @@ export default function OffersPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="field-label" htmlFor="of-bonus-value">
+                  <label className="field-label" htmlFor="of-bval">
                     Bonus value
                   </label>
                   <input
-                    id="of-bonus-value"
+                    id="of-bval"
                     type="number"
                     min="0.01"
                     step="0.01"
@@ -301,11 +348,12 @@ export default function OffersPage() {
                   />
                 </div>
               </div>
+
               <div>
-                <label className="field-label" htmlFor="of-applies-to">
+                <label className="field-label" htmlFor="of-applies">
                   Applies to
                 </label>
-                <select id="of-applies-to" className="field-input" value={form.appliesTo} onChange={(e) => setForm({ ...form, appliesTo: e.target.value })}>
+                <select id="of-applies" className="field-input" value={form.appliesTo} onChange={(e) => setForm({ ...form, appliesTo: e.target.value })}>
                   {APPLIES_TO.map((a) => (
                     <option key={a.value} value={a.value}>
                       {a.label}
@@ -313,10 +361,11 @@ export default function OffersPage() {
                   ))}
                 </select>
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label className="field-label" htmlFor="of-starts">
-                    Starts at
+                    Starts at *
                   </label>
                   <input
                     id="of-starts"
@@ -329,7 +378,7 @@ export default function OffersPage() {
                 </div>
                 <div>
                   <label className="field-label" htmlFor="of-ends">
-                    Ends at
+                    Ends at *
                   </label>
                   <input
                     id="of-ends"
@@ -341,11 +390,14 @@ export default function OffersPage() {
                   />
                 </div>
               </div>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
                 Active
               </label>
+
               {formError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{formError}</div>}
+
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <Button type="button" variant="ghost" fullWidth onClick={() => setShowForm(false)}>
                   Cancel

@@ -110,10 +110,18 @@ export async function POST(request) {
   if (roleError) return roleError;
 
   try {
-    const { name, category, price, description, imageUrl, isAvailable } = await request.json();
+    const { name, category, price, description, imageUrl, images, isAvailable } = await request.json();
     if (!name || !category || price === undefined) {
       return NextResponse.json({ message: 'Name, category, and price are required' }, { status: 400 });
     }
+    let finalImageUrl = imageUrl || '';
+    if (Array.isArray(images) && images.length > 0) {
+      if (images.length > 5) {
+        return NextResponse.json({ message: 'Maximum 5 images allowed per menu item' }, { status: 400 });
+      }
+      finalImageUrl = JSON.stringify(images.slice(0, 5));
+    }
+
     const { data, error } = await supabase
       .from('menu_items')
       .insert({
@@ -121,7 +129,7 @@ export async function POST(request) {
         category,
         price: parseFloat(price),
         description,
-        image_url: imageUrl,
+        image_url: finalImageUrl,
         is_available: isAvailable !== undefined ? isAvailable : true,
         ...(auth.orgId ? { org_id: auth.orgId } : {})
       })

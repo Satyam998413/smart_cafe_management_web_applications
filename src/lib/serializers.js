@@ -62,6 +62,30 @@ export const serializeMenuItemOptionGroup = (group) => {
 
 export const serializeMenuItem = (menuItem) => {
   if (!menuItem) return null;
+  let images = [];
+  let imageUrl = menuItem.image_url || '';
+  if (menuItem.image_url) {
+    if (typeof menuItem.image_url === 'string' && menuItem.image_url.startsWith('[') && menuItem.image_url.endsWith(']')) {
+      try {
+        images = JSON.parse(menuItem.image_url);
+        if (Array.isArray(images) && images.length > 0) {
+          imageUrl = images[0];
+        }
+      } catch {
+        images = [menuItem.image_url];
+      }
+    } else if (typeof menuItem.image_url === 'string' && menuItem.image_url.includes(',')) {
+      images = menuItem.image_url.split(',').map((s) => s.trim()).filter(Boolean);
+      if (images.length > 0) imageUrl = images[0];
+    } else {
+      images = [menuItem.image_url];
+    }
+  }
+  if (Array.isArray(menuItem.images) && menuItem.images.length > 0) {
+    images = menuItem.images;
+    if (!imageUrl) imageUrl = images[0];
+  }
+
   return {
     _id: menuItem.id,
     id: menuItem.id,
@@ -69,7 +93,8 @@ export const serializeMenuItem = (menuItem) => {
     category: menuItem.category,
     price: toNumber(menuItem.price),
     description: menuItem.description,
-    imageUrl: menuItem.image_url,
+    imageUrl,
+    images: images.slice(0, 5),
     isAvailable: menuItem.is_available,
     createdAt: menuItem.created_at,
     optionGroups: (menuItem.optionGroups || []).map(serializeMenuItemOptionGroup)

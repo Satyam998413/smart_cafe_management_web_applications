@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, PackageOpen } from 'lucide-react';
+import { Search, PackageOpen, ClipboardList } from 'lucide-react';
 import OrderCard from '@/components/OrderCard';
 import SegmentedToggle from '@/components/ui/SegmentedToggle';
 import { SkeletonGrid } from '@/components/ui/Skeleton';

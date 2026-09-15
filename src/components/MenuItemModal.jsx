@@ -82,18 +82,103 @@ export default function MenuItemModal({ mode, initialItem, onClose, onSave }) {
     );
   };
 
+  const [itemImages, setItemImages] = useState(() => {
+    if (mode === 'edit' && initialItem) {
+      if (Array.isArray(initialItem.images) && initialItem.images.length > 0) return initialItem.images.slice(0, 5);
+      if (initialItem.imageUrl) return [initialItem.imageUrl];
+    }
+    return [];
+  });
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadError('');
+
+    if (itemImages.length + files.length > 5) {
+      setUploadError(`Maximum 5 images allowed per menu item. You can add at most ${5 - itemImages.length} more.`);
+      return;
+    }
+
+    for (const file of files) {
+      if (!file.type || !file.type.startsWith('image/')) {
+        setUploadError('Only image files (JPEG, PNG, WebP, GIF, SVG, etc.) are allowed.');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        setUploadError(`Image "${file.name}" exceeds maximum allowed size of 3 MB.`);
+        return;
+      }
+    }
+
+    setUploadingImages(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+      const uploadedUrls = [];
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'menu');
+        formData.append('entityId', initialItem?.id || 'new-item');
+
+        const res = await (apiFetch
+          ? apiFetch('/uploads', { method: 'POST', body: formData })
+          : fetch('/api/uploads', {
+              method: 'POST',
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              body: formData
+            }));
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Image upload failed');
+        }
+        if (data.url) uploadedUrls.push(data.url);
+      }
+
+      const nextImages = [...itemImages, ...uploadedUrls].slice(0, 5);
+      setItemImages(nextImages);
+      if (nextImages.length > 0 && !newItem.imageUrl) {
+        setNewItem((prev) => ({ ...prev, imageUrl: nextImages[0] }));
+      }
+    } catch (err) {
+      console.error('Failed to upload menu image:', err);
+      setUploadError(err.message || 'Failed to upload image.');
+    } finally {
+      setUploadingImages(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (indexToRemove) => {
+    const nextImages = itemImages.filter((_, idx) => idx !== indexToRemove);
+    setItemImages(nextImages);
+    if (newItem.imageUrl === itemImages[indexToRemove]) {
+      setNewItem((prev) => ({ ...prev, imageUrl: nextImages[0] || '' }));
+    }
+  };
+
+  const setPrimaryImage = (url) => {
+    setNewItem((prev) => ({ ...prev, imageUrl: url }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newItem.name || !newItem.price) return;
     setSaving(true);
     try {
+      const primaryUrl = newItem.imageUrl || itemImages[0] || '';
       await onSave(
         {
           name: newItem.name,
           category: newItem.category,
           price: newItem.price,
           description: newItem.description,
-          imageUrl: newItem.imageUrl,
+          imageUrl: primaryUrl,
+          images: itemImages,
           isAvailable: newItem.isAvailable
         },
         optionGroups,
@@ -105,7 +190,7 @@ export default function MenuItemModal({ mode, initialItem, onClose, onSave }) {
   };
 
   return (
-    <Modal onClose={onClose} maxWidth={520}>
+    <Modal onClose={onClose} maxWidth={540}>
       <div style={{ padding: '2rem' }}>
         <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>{mode === 'edit' ? 'Edit Menu Item' : 'Add New Menu Item'}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -141,41 +226,99 @@ export default function MenuItemModal({ mode, initialItem, onClose, onSave }) {
             rows="3"
           />
 
-          {/* Image */}
+          {/* Images Section (Max 5 Images) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Images ({itemImages.length}/5 max, up to 3MB each)
+              </label>
+              {itemImages.length < 5 && (
+                <label className="btn-orange" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  {uploadingImages ? 'Uploading…' : '+ Add Image(s)'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={uploadingImages}
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {uploadError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.8rem' }}>{uploadError}</div>}
+
+            {/* Uploaded Thumbnails Grid */}
+            {itemImages.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', marginTop: '0.25rem' }}>
+                {itemImages.map((url, idx) => (
+                  <div
+                    key={`${url}-${idx}`}
+                    style={{
+                      position: 'relative',
+                      aspectRatio: '1',
+                      borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden',
+                      border: (newItem.imageUrl === url || (!newItem.imageUrl && idx === 0)) ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                      background: 'var(--bg-surface-elevated)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setPrimaryImage(url)}
+                    title="Click to set as primary cover photo"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Menu photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={(evt) => {
+                        evt.stopPropagation();
+                        removeImage(idx);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '0.25rem',
+                        right: '0.25rem',
+                        background: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: 20,
+                        height: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Remove image"
+                    >
+                      <X size={12} />
+                    </button>
+                    {(newItem.imageUrl === url || (!newItem.imageUrl && idx === 0)) && (
+                      <span style={{ position: 'absolute', bottom: '0.15rem', left: '0.15rem', right: '0.15rem', background: 'var(--accent-primary)', color: '#fff', fontSize: '0.6rem', textAlign: 'center', fontWeight: 700, borderRadius: '2px', padding: '1px 0' }}>
+                        COVER
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <input
               type="url"
               className="field-input"
-              placeholder="Image URL (optional)"
+              placeholder="Or paste Direct Image URL (optional)"
               value={newItem.imageUrl}
               onChange={(e) => {
                 setImgPreviewError(false);
-                setNewItem({ ...newItem, imageUrl: e.target.value });
+                const url = e.target.value;
+                setNewItem({ ...newItem, imageUrl: url });
+                if (url && !itemImages.includes(url) && itemImages.length < 5) {
+                  setItemImages((prev) => [...prev, url]);
+                }
               }}
             />
-            <div
-              style={{
-                height: 140,
-                borderRadius: 'var(--radius-md)',
-                overflow: 'hidden',
-                background: 'var(--bg-surface-elevated)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {newItem.imageUrl && !imgPreviewError ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={newItem.imageUrl}
-                  alt="Preview"
-                  onError={() => setImgPreviewError(true)}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <ImageOff size={28} color="var(--text-muted)" strokeWidth={1.5} />
-              )}
-            </div>
+
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Suggested photos</span>
             <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
               {(CATEGORY_IMAGE_SUGGESTIONS[newItem.category] || []).map((url) => (
@@ -185,11 +328,14 @@ export default function MenuItemModal({ mode, initialItem, onClose, onSave }) {
                   onClick={() => {
                     setImgPreviewError(false);
                     setNewItem({ ...newItem, imageUrl: url });
+                    if (!itemImages.includes(url) && itemImages.length < 5) {
+                      setItemImages((prev) => [...prev, url]);
+                    }
                   }}
                   style={{
                     flexShrink: 0,
-                    width: 64,
-                    height: 64,
+                    width: 56,
+                    height: 56,
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden',
                     padding: 0,
