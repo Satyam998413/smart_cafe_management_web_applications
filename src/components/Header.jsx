@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
+import ThemeToggle from './ThemeToggle';
 
-// Ported unchanged from react_app/src/components/Header.jsx.
 export default function Header({ connected, authName, authRole, onLogout }) {
   return (
     <motion.header
@@ -21,7 +21,7 @@ export default function Header({ connected, authName, authRole, onLogout }) {
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div className={`live-badge ${connected ? '' : 'offline'}`}>
           <motion.span
             className="dot"
@@ -30,6 +30,7 @@ export default function Header({ connected, authName, authRole, onLogout }) {
           />
           {connected ? 'Real-time Live' : 'Offline / Reconnecting'}
         </div>
+        <ThemeToggle />
         <ProfileMenu authName={authName} authRole={authRole} onLogout={onLogout} />
       </div>
     </motion.header>

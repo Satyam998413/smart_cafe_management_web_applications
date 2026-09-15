@@ -297,11 +297,16 @@ export default function StaffPage({ apiFetch, authRole }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Staff Accounts</h2>
-        <Button variant="primary" onClick={openAdd}>
-          + Add Staff
-        </Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Staff Directory</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+            Manage staff accounts, site assignments, and manager permissions.
+          </p>
+        </div>
+        <button className="btn-orange" onClick={openAdd}>
+          + Add Staff Member
+        </button>
       </div>
 
       {loading ? (

@@ -205,29 +205,51 @@ export default function IotDevicesPage({ apiFetch }) {
         <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>IoT Devices</h2>
       </div>
 
-      <TiltCard className="glass-card rounded-shape-lg shadow-elevation-2" wrapperClassName="w-full">
-        <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div className="entity-icon">
-              <Power size={20} />
+      {/* Hardware & Gateway Health Summary (Image 4) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <TiltCard className="glass-card rounded-shape-lg shadow-elevation-2" wrapperClassName="w-full">
+          <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="entity-icon" style={{ background: 'rgba(255, 122, 0, 0.14)', color: '#ff7a00' }}>
+                <Power size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Master Switch — All Devices</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {orgSwitchResult || 'Turns every switchable device across the whole organization on or off.'}
+                </div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Master Switch — All Devices</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {orgSwitchResult || 'Turns every switchable device across the whole organization on or off.'}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(true)}>
+                {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <Power size={14} />} On
+              </button>
+              <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(false)}>
+                {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <PowerOff size={14} />} Off
+              </button>
+            </div>
+          </div>
+        </TiltCard>
+
+        <TiltCard className="glass-card rounded-shape-lg shadow-elevation-2" wrapperClassName="w-full">
+          <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="entity-icon" style={{ background: 'rgba(16, 185, 129, 0.14)', color: '#10b981' }}>
+                <RadioTower size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Hardware Gateways
+                  <span className="badge-active" style={{ fontSize: '0.68rem' }}>2 CONNECTED</span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Lobby Gateway #01 (18 devices) · Roastery Floor #02 (10 devices)
+                </div>
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(true)}>
-              {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <Power size={14} />} On
-            </button>
-            <button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 1rem', gap: '0.4rem', display: 'inline-flex', alignItems: 'center' }} disabled={orgSwitchBusy} onClick={() => handleOrgMasterSwitch(false)}>
-              {orgSwitchBusy ? <Loader2 size={14} className="spin" /> : <PowerOff size={14} />} Off
-            </button>
-          </div>
-        </div>
-      </TiltCard>
+        </TiltCard>
+      </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <select className="field-input" style={{ maxWidth: 260 }} value={siteId} onChange={(e) => setSiteId(e.target.value)} disabled={sitesLoading}>

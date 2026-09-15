@@ -360,9 +360,9 @@ export default function WalletPage({ apiFetch, authRole, authName }) {
 
               {rechargeError && <span style={{ fontSize: '0.8rem', color: 'var(--status-cancelled)' }}>{rechargeError}</span>}
 
-              <Button variant="primary" loading={starting} disabled={starting || !selectedPlanId} onClick={handleRecharge} style={{ alignSelf: 'flex-start' }}>
-                Recharge Now
-              </Button>
+              <button className="btn-orange" style={{ alignSelf: 'flex-start' }} disabled={starting || !selectedPlanId} onClick={handleRecharge}>
+                {starting ? 'Starting Recharge…' : 'Recharge Now'}
+              </button>
             </div>
           )}
         </div>

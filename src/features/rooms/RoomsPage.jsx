@@ -295,9 +295,9 @@ export default function RoomsPage({ apiFetch, authRole }) {
               ))}
             </select>
             {isOwner && (
-              <Button variant="primary" onClick={openAdd}>
-                <Plus size={15} /> Add Room
-              </Button>
+              <button className="btn-orange" onClick={openAdd}>
+                <Plus size={16} /> + Add Room
+              </button>
             )}
           </div>
         )}

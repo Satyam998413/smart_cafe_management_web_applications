@@ -203,18 +203,17 @@ export default function BookingsPage({ apiFetch }) {
                 </div>
 
                 {actions.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                     {actions.map((status) => (
-                      <Button
+                      <button
                         key={status}
-                        size="sm"
-                        variant={status === 'cancelled' ? 'danger' : 'primary'}
+                        className={status === 'cancelled' ? 'btn-outline-dark' : 'btn-orange'}
+                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
                         disabled={busy}
-                        loading={busy}
                         onClick={() => handleStatusChange(booking, status)}
                       >
                         {ACTION_LABELS[status]}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 )}
