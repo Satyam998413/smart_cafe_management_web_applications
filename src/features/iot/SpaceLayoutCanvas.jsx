@@ -3,61 +3,112 @@
 import { useEffect, useRef, useState } from 'react';
 import { DragDropProvider, useDraggable } from '@dnd-kit/react';
 import { RestrictToElement } from '@dnd-kit/dom/modifiers';
-import { Cpu, Lightbulb, Fan, Snowflake, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Cpu, Lightbulb, Fan, Snowflake, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Save, Lock, Check } from 'lucide-react';
 import { isOnOffCapability } from '@/lib/iot/deviceCommands.js';
 import { jsonBody } from '@/lib/apiClient.js';
+import Button from '@/components/ui/Button';
 
 const TYPE_ICONS = { lamp: Lightbulb, fan: Fan, ac: Snowflake, other: Cpu };
 const getTypeIcon = (type) => TYPE_ICONS[type] || Cpu;
 const clamp = (value) => Math.min(100, Math.max(0, value));
 const NUDGE_STEP = 2; // percent per button press
 
-// Free-position drag-and-drop onto one open canvas (not slotting into fixed
-// targets), built on @dnd-kit/react + @dnd-kit/dom — the actively
-// maintained successor to the classic @dnd-kit/core (last published
-// December 2024; the /react + /dom split gets regular releases and is what
-// the current dndkit.com docs describe). Position is stored as a 0-100
-// percentage of the canvas's own size, not pixels, so a saved layout still
-// looks right at any viewport size.
-//
-// spaceLength/spaceWidth (meters, from the Layout Builder form) size the
-// canvas to the room's real proportions via CSS aspect-ratio, so a long
-// narrow hall actually looks long and narrow rather than a generic square —
-// clamped to [0.4, 2.5] so a mistyped or extreme pair (e.g. 20m x 1m) can't
-// produce an unusably thin/tall canvas. Falls back to a plain 16:9 box when
-// either dimension is missing (spaces created before this feature).
-export default function SpaceLayoutCanvas({ devices, spaceLabel, spaceLength, spaceWidth, apiFetch, onDeviceMoved }) {
+export default function SpaceLayoutCanvas({
+  devices = [],
+  spaceLabel,
+  spaceLength: initialLength,
+  spaceWidth: initialWidth,
+  spaceId,
+  apiFetch,
+  onDeviceMoved,
+  authRole = 'owner',
+  childSpaces = [],
+  pendingTableIds = new Set(),
+  activeOrdersCount = 0,
+  onOpenPickupOrders,
+  onSpaceClick
+}) {
   const canvasRef = useRef(null);
-  // Mirrors the `devices` prop so a drag can update a position immediately
-  // (this is a layout preference, not a hardware command — optimistic UI is
-  // fine here, unlike the on/off controls elsewhere in this feature) and
-  // revert it if the PATCH fails.
+  const isEditable = ['owner', 'admin', 'master_admin', 'platform_admin'].includes((authRole || '').toLowerCase());
+
   const [positions, setPositions] = useState({});
   const [selectedId, setSelectedId] = useState(null);
+  const [dimLength, setDimLength] = useState(initialLength || 6);
+  const [dimWidth, setDimWidth] = useState(initialWidth || 4);
+  const [savingPositions, setSavingPositions] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [viewMode, setViewMode] = useState('2d'); // '2d' | '3d_isometric'
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPositions(Object.fromEntries(devices.map((d) => [d.id, { posX: d.posX, posY: d.posY }])));
   }, [devices]);
+
+  useEffect(() => {
+    if (initialLength) setDimLength(initialLength);
+    if (initialWidth) setDimWidth(initialWidth);
+  }, [initialLength, initialWidth]);
 
   const placed = devices.filter((d) => positions[d.id]?.posX != null && positions[d.id]?.posY != null);
   const unplaced = devices.filter((d) => positions[d.id]?.posX == null || positions[d.id]?.posY == null);
 
-  const rawAspect = spaceLength && spaceWidth ? Number(spaceLength) / Number(spaceWidth) : 16 / 9;
+  const rawAspect = dimLength && dimWidth ? Number(dimLength) / Number(dimWidth) : 16 / 9;
   const aspectRatio = Math.min(2.5, Math.max(0.4, rawAspect));
 
   const savePosition = async (deviceId, posX, posY, previous) => {
+    if (!isEditable) return;
     try {
-      const res = await apiFetch(`/iot-devices/${deviceId}/position`, { method: 'PATCH', ...jsonBody({ posX, posY }) });
+      const res = await apiFetch(`/iot-devices/${deviceId}/position`, {
+        method: 'PATCH',
+        ...jsonBody({ posX, posY })
+      });
       if (!res.ok) throw new Error('Failed to save position');
       onDeviceMoved?.();
     } catch (e) {
       console.error('Failed to save device position:', e);
-      setPositions((prev) => ({ ...prev, [deviceId]: previous }));
+      if (previous) {
+        setPositions((prev) => ({ ...prev, [deviceId]: previous }));
+      }
+    }
+  };
+
+  const handleSaveAllPositions = async () => {
+    if (!isEditable) return;
+    setSavingPositions(true);
+    setSaveMessage('');
+    try {
+      // 1. Batch save device positions
+      await Promise.all(
+        placed.map((d) => {
+          const pos = positions[d.id];
+          if (!pos || pos.posX == null || pos.posY == null) return Promise.resolve();
+          return apiFetch(`/iot-devices/${d.id}/position`, {
+            method: 'PATCH',
+            ...jsonBody({ posX: pos.posX, posY: pos.posY })
+          });
+        })
+      );
+
+      // 2. Save space dimensions if spaceId is provided
+      if (spaceId && (dimLength !== initialLength || dimWidth !== initialWidth)) {
+        await apiFetch(`/spaces/${spaceId}`, {
+          method: 'PATCH',
+          ...jsonBody({ length: Number(dimLength), width: Number(dimWidth) })
+        });
+      }
+
+      setSaveMessage('🎉 Layout & positions saved successfully!');
+      onDeviceMoved?.();
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (e) {
+      console.error('Failed to save layout:', e);
+      setSaveMessage('❌ Failed to save layout. Please try again.');
+    } finally {
+      setSavingPositions(false);
     }
   };
 
   const handleNudge = (deviceId, dx, dy) => {
+    if (!isEditable) return;
     const previous = positions[deviceId];
     if (!previous || previous.posX == null) return;
     const nextX = clamp(previous.posX + dx * NUDGE_STEP);
@@ -67,6 +118,7 @@ export default function SpaceLayoutCanvas({ devices, spaceLabel, spaceLength, sp
   };
 
   const handleDragEnd = (event) => {
+    if (!isEditable) return;
     const { operation, canceled } = event;
     if (canceled || !canvasRef.current) return;
 
@@ -78,14 +130,9 @@ export default function SpaceLayoutCanvas({ devices, spaceLabel, spaceLength, sp
     let nextX;
     let nextY;
     if (previous.posX == null || previous.posY == null) {
-      // Coming from the unplaced tray — no prior canvas-relative position to
-      // offset from, so the drop point itself (relative to the canvas) is
-      // the new position.
       nextX = ((current.x - rect.left) / rect.width) * 100;
       nextY = ((current.y - rect.top) / rect.height) * 100;
     } else {
-      // Already on the canvas — apply the pointer's movement as a delta so
-      // the icon doesn't jump to align with the pointer's exact tip.
       const dxPercent = ((current.x - initial.x) / rect.width) * 100;
       const dyPercent = ((current.y - initial.y) / rect.height) * 100;
       nextX = previous.posX + dxPercent;
@@ -98,75 +145,358 @@ export default function SpaceLayoutCanvas({ devices, spaceLabel, spaceLength, sp
     savePosition(deviceId, nextX, nextY, previous);
   };
 
+  const handleStretch = (type, delta) => {
+    if (!isEditable) return;
+    if (type === 'length') {
+      setDimLength((prev) => Math.max(1, Math.round((Number(prev) + delta) * 10) / 10));
+    } else {
+      setDimWidth((prev) => Math.max(1, Math.round((Number(prev) + delta) * 10) / 10));
+    }
+  };
+
+  const isIsometric = viewMode === '3d_isometric';
+
   return (
     <DragDropProvider onDragEnd={handleDragEnd}>
-      {unplaced.length > 0 && (
+      {/* Role Permission, 2D/3D Toggle & Action Header */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '0.85rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          marginBottom: '1rem'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.3rem 0.75rem',
+              borderRadius: 999,
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              background: isEditable ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+              color: isEditable ? '#10b981' : '#ef4444',
+              border: `1px solid ${isEditable ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`
+            }}
+          >
+            {isEditable ? <Check size={14} /> : <Lock size={14} />}
+            {isEditable ? 'Owner / Master Admin Layout Controls Active' : '👁️ View Only'}
+          </span>
+
+          {/* 2D / 3D Isometric Mode Selector */}
+          <div
+            style={{
+              display: 'inline-flex',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+              overflow: 'hidden',
+              background: 'var(--bg-surface)'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('2d')}
+              style={{
+                padding: '0.3rem 0.75rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: 'none',
+                background: viewMode === '2d' ? 'var(--accent-primary)' : 'transparent',
+                color: viewMode === '2d' ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              📐 2D Layout
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('3d_isometric')}
+              style={{
+                padding: '0.3rem 0.75rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: 'none',
+                background: viewMode === '3d_isometric' ? 'var(--accent-primary)' : 'transparent',
+                color: viewMode === '3d_isometric' ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🧊 3D Isometric
+            </button>
+          </div>
+
+          {saveMessage && (
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: saveMessage.startsWith('🎉') ? '#10b981' : '#ef4444' }}>
+              {saveMessage}
+            </span>
+          )}
+        </div>
+
+        {isEditable && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Button variant="primary" size="sm" onClick={handleSaveAllPositions} loading={savingPositions} disabled={savingPositions}>
+              <Save size={14} /> Set Positions
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Stretchable Area Dimensions Control (Owner / Master Admin only) */}
+      {isEditable && (
+        <div
+          className="glass-card"
+          style={{
+            padding: '0.75rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            marginBottom: '1rem'
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+            📐 Stretchable Floor Dimensions:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+              <span>Length: <strong>{dimLength}m</strong></span>
+              <button type="button" className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => handleStretch('length', 0.5)} title="Stretch Length +0.5m">+</button>
+              <button type="button" className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => handleStretch('length', -0.5)} title="Shrink Length -0.5m">-</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+              <span>Width: <strong>{dimWidth}m</strong></span>
+              <button type="button" className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => handleStretch('width', 0.5)} title="Stretch Width +0.5m">+</button>
+              <button type="button" className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => handleStretch('width', -0.5)} title="Shrink Width -0.5m">-</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unplaced Equipment Bar */}
+      {unplaced.length > 0 && isEditable && (
         <div className="glass-card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
           <span className="field-label" style={{ marginBottom: 0 }}>
-            Unplaced — drag onto the floor plan below
+            Unplaced Equipment — Drag onto the floor plan canvas below:
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
             {unplaced.map((device) => (
-              <DeviceIcon key={device.id} device={device} />
+              <DeviceIcon key={device.id} device={device} isEditable={isEditable} />
             ))}
           </div>
         </div>
       )}
 
+      {/* Interactive Spatial Floor Plan Canvas (2D / 3D Isometric) */}
       <div
-        ref={canvasRef}
-        className="glass-card"
-        onClick={() => setSelectedId(null)}
         style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 700,
-          margin: '0 auto',
-          aspectRatio,
-          background: 'var(--bg-surface-elevated)',
+          perspective: isIsometric ? '1200px' : 'none',
+          padding: isIsometric ? '2rem 1rem 3rem' : '0',
           overflow: 'visible'
         }}
       >
-        <div style={{ position: 'absolute', top: 10, left: 14, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-          {spaceLabel} — floor plan{spaceLength && spaceWidth ? ` (${spaceLength}m × ${spaceWidth}m)` : ''}
-        </div>
-        {placed.map((device) => (
+        <div
+          ref={canvasRef}
+          className="glass-card"
+          onClick={() => setSelectedId(null)}
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: 780,
+            margin: '0 auto',
+            aspectRatio,
+            background: isIsometric
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95))'
+              : 'var(--bg-surface-elevated)',
+            overflow: 'visible',
+            border: isEditable ? '2px dashed var(--accent-primary)' : '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            transform: isIsometric ? 'rotateX(48deg) rotateZ(-32deg) skewX(8deg)' : 'none',
+            transformStyle: isIsometric ? 'preserve-3d' : 'flat',
+            boxShadow: isIsometric
+              ? '20px 30px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              : 'var(--shadow-md)',
+            transition: 'transform 0.5s ease, box-shadow 0.5s ease, aspect-ratio 0.3s ease'
+          }}
+        >
           <div
-            key={device.id}
             style={{
               position: 'absolute',
-              left: `${positions[device.id]?.posX ?? 50}%`,
-              top: `${positions[device.id]?.posY ?? 50}%`,
-              transform: 'translate(-50%, -50%)'
+              top: 12,
+              left: 14,
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: isIsometric ? '#cbd5e1' : 'var(--text-muted)',
+              transform: isIsometric ? 'translateZ(15px)' : 'none',
+              zIndex: 5
             }}
           >
-            <DeviceIcon
-              device={device}
-              selected={selectedId === device.id}
-              onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
-              onNudge={(dx, dy) => handleNudge(device.id, dx, dy)}
-            />
+            {spaceLabel} — {isIsometric ? '3D Isometric Glass Floor Plan' : 'Floor Plan Layout'} ({dimLength}m × {dimWidth}m)
           </div>
-        ))}
+
+          {/* Render Child Spaces / Zones & Cafe Tables with Red/Green Status Badges */}
+          {childSpaces.map((child, idx) => {
+            const isPickupStation = child.kind === 'pickup_station' || child.label?.toLowerCase().includes('pickup');
+            const isTable = child.kind === 'table';
+            const hasPendingBill = pendingTableIds.has(child.id) || pendingTableIds.has(child.number) || pendingTableIds.has(child.label);
+
+            // Calculate grid layout position if positions not set
+            const col = idx % 4;
+            const row = Math.floor(idx / 4);
+            const posX = child.posX ?? 15 + col * 22;
+            const posY = child.posY ?? 25 + row * 30;
+
+            return (
+              <div
+                key={child.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isPickupStation && onOpenPickupOrders) {
+                    onOpenPickupOrders();
+                  } else {
+                    onSpaceClick?.(child, e);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${clamp(posX)}%`,
+                  top: `${clamp(posY)}%`,
+                  transform: isIsometric ? 'translate(-50%, -50%) translateZ(20px)' : 'translate(-50%, -50%)',
+                  padding: isTable || isPickupStation ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                  minWidth: isTable ? 90 : 120,
+                  borderRadius: 'var(--radius-md)',
+                  background: isPickupStation
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35))'
+                    : hasPendingBill
+                    ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.35))'
+                    : 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))',
+                  border: `2px solid ${
+                    isPickupStation ? '#f59e0b' : hasPendingBill ? '#ef4444' : '#10b981'
+                  }`,
+                  boxShadow: isIsometric
+                    ? `0 10px 20px rgba(0,0,0,0.3), 0 0 12px ${isPickupStation ? 'rgba(245, 158, 11, 0.4)' : hasPendingBill ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`
+                    : 'var(--shadow-sm)',
+                  cursor: 'pointer',
+                  zIndex: 4,
+                  transition: 'all 0.3s ease',
+                  userSelect: 'none'
+                }}
+                title={
+                  isPickupStation
+                    ? `Click to view ${activeOrdersCount} orders in process!`
+                    : hasPendingBill
+                    ? 'Occupied — Pending Bill (Double-click to zoom)'
+                    : 'Available — Clear (Double-click to zoom)'
+                }
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '0.85rem' }}>
+                    {isPickupStation
+                      ? '🍳'
+                      : isTable
+                      ? '🪑'
+                      : child.kind === 'canteen'
+                      ? '☕'
+                      : child.kind === 'room'
+                      ? '🛌'
+                      : child.kind === 'corridor'
+                      ? '🚶‍♂️'
+                      : child.kind === 'hall'
+                      ? '🏛️'
+                      : '🚪'}
+                  </span>
+                  <strong style={{ fontSize: '0.78rem', color: '#ffffff', whiteSpace: 'nowrap' }}>
+                    {child.label}
+                  </strong>
+                </div>
+
+                {isTable && (
+                  <div style={{ marginTop: '0.2rem', textAlign: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: 999,
+                        background: hasPendingBill ? '#ef4444' : '#10b981',
+                        color: '#ffffff'
+                      }}
+                    >
+                      {hasPendingBill ? '🔴 Pending Bill' : '🟢 Clear'}
+                    </span>
+                  </div>
+                )}
+
+                {isPickupStation && (
+                  <div style={{ marginTop: '0.2rem', textAlign: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: 999,
+                        background: '#f59e0b',
+                        color: '#000000'
+                      }}
+                    >
+                      ⚡ {activeOrdersCount} In Process
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {placed.map((device) => (
+            <div
+              key={device.id}
+              style={{
+                position: 'absolute',
+                left: `${positions[device.id]?.posX ?? 50}%`,
+                top: `${positions[device.id]?.posY ?? 50}%`,
+                transform: isIsometric ? 'translate(-50%, -50%) translateZ(25px)' : 'translate(-50%, -50%)',
+                zIndex: 6
+              }}
+            >
+              <DeviceIcon
+                device={device}
+                isEditable={isEditable}
+                selected={selectedId === device.id}
+                onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+                onNudge={(dx, dy) => handleNudge(device.id, dx, dy)}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {placed.length > 0 && (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.6rem', textAlign: 'center' }}>
-          Drag an icon to reposition it, or click one to nudge it with arrow buttons.
+          {isEditable
+            ? 'Drag any equipment icon to reposition, or select one to use Up/Down/Left/Right nudge buttons. Click "Set Positions" to save.'
+            : 'View Only Mode — Equipment positions are fixed and managed by Owners & Master Admins.'}
         </p>
       )}
     </DragDropProvider>
   );
 }
 
-function DeviceIcon({ device, selected = false, onSelect, onNudge }) {
+function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onNudge }) {
   const { ref } = useDraggable({
     id: device.id,
+    disabled: !isEditable,
     modifiers: [RestrictToElement.configure({ element: () => document.body })]
   });
-  // TYPE_ICONS entries are stable module-level components; this is the same
-  // by-type icon lookup used throughout src/features/iot and elsewhere in
-  // this codebase, not a genuinely dynamic component creation.
+
   const TypeIcon = getTypeIcon(device.type);
   const onOffCapability = device.capabilities.find(isOnOffCapability);
   const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : null;
@@ -187,7 +517,7 @@ function DeviceIcon({ device, selected = false, onSelect, onNudge }) {
         flexDirection: 'column',
         alignItems: 'center',
         gap: '0.25rem',
-        cursor: 'grab',
+        cursor: isEditable ? 'grab' : 'default',
         touchAction: 'none',
         userSelect: 'none'
       }}
@@ -199,18 +529,17 @@ function DeviceIcon({ device, selected = false, onSelect, onNudge }) {
           background,
           border: '2px solid currentColor',
           boxShadow: 'var(--shadow-xs)',
-          outline: selected ? '2px solid var(--accent-primary)' : 'none',
+          outline: selected && isEditable ? '2px solid var(--accent-primary)' : 'none',
           outlineOffset: 2
         }}
       >
-        {/* eslint-disable-next-line react-hooks/static-components */}
         <TypeIcon size={18} />
       </div>
       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
         {device.deviceCode}
       </span>
 
-      {selected && onNudge && (
+      {selected && isEditable && onNudge && (
         <div
           onClick={(e) => e.stopPropagation()}
           style={{

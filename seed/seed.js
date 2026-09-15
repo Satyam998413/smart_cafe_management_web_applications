@@ -6,6 +6,7 @@ import {
   DEFAULT_ORG,
   DEFAULT_SITE,
   DEFAULT_SPACES,
+  DEFAULT_MULTI_FLOOR_STRUCTURE,
   DEFAULT_WALLET,
   DEFAULT_COIN_PLANS,
   DEFAULT_USERS,
@@ -80,24 +81,74 @@ async function seedSiteAndSpaces(client, orgId) {
     lng: DEFAULT_SITE.lng
   });
 
-  const floor = await insertOne(client, 'spaces', {
-    site_id: site.id,
-    kind: 'floor',
-    label: DEFAULT_SPACES.floorLabel,
-    sort_order: 0
-  });
+  const createdTables = [];
+  const createdSpaces = [];
 
-  const tableRows = DEFAULT_SPACES.tableNumbers.map((number, index) => ({
-    site_id: site.id,
-    parent_space_id: floor.id,
-    kind: 'table',
-    label: `Table ${number}`,
-    number: String(number),
-    sort_order: index + 1
-  }));
-  const tables = await insertMany(client, 'spaces', tableRows, 'id, label, number');
+  for (let flIdx = 0; flIdx < DEFAULT_MULTI_FLOOR_STRUCTURE.length; flIdx += 1) {
+    const floorDef = DEFAULT_MULTI_FLOOR_STRUCTURE[flIdx];
+    const floor = await insertOne(client, 'spaces', {
+      site_id: site.id,
+      kind: 'floor',
+      label: floorDef.label,
+      number: floorDef.number,
+      length: floorDef.length,
+      width: floorDef.width,
+      sort_order: flIdx
+    });
+    createdSpaces.push(floor);
 
-  return { site, floor, tables };
+    if (floorDef.children) {
+      for (let chIdx = 0; chIdx < floorDef.children.length; chIdx += 1) {
+        const childDef = floorDef.children[chIdx];
+        const rawKind = childDef.kind;
+        const dbKind = rawKind === 'corridor' ? 'hall' : (rawKind === 'building' ? 'floor' : rawKind);
+        const childDescription = rawKind !== dbKind ? `[kind:${rawKind}]` : null;
+
+        const childSpace = await insertOne(client, 'spaces', {
+          site_id: site.id,
+          parent_space_id: floor.id,
+          kind: dbKind,
+          label: childDef.label,
+          number: childDef.number,
+          description: childDescription,
+          pos_x: childDef.posX ?? null,
+          pos_y: childDef.posY ?? null,
+          length: childDef.length ?? null,
+          width: childDef.width ?? null,
+          is_bookable: !!childDef.isBookable,
+          sort_order: chIdx
+        });
+        createdSpaces.push(childSpace);
+
+        if (childDef.tables) {
+          for (let tblIdx = 0; tblIdx < childDef.tables.length; tblIdx += 1) {
+            const tblDef = childDef.tables[tblIdx];
+            const rawTableKind = tblDef.kind || 'table';
+            const dbTableKind = rawTableKind === 'pickup_station' ? 'table' : rawTableKind;
+            const tableDescription = rawTableKind !== dbTableKind ? `[kind:${rawTableKind}]` : null;
+
+            const tableSpace = await insertOne(client, 'spaces', {
+              site_id: site.id,
+              parent_space_id: childSpace.id,
+              kind: dbTableKind,
+              label: tblDef.label,
+              number: tblDef.number,
+              description: tableDescription,
+              pos_x: tblDef.posX ?? null,
+              pos_y: tblDef.posY ?? null,
+              sort_order: tblIdx
+            });
+            createdSpaces.push(tableSpace);
+            if (tableSpace.kind === 'table') {
+              createdTables.push(tableSpace);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { site, floors: createdSpaces.filter((s) => s.kind === 'floor'), tables: createdTables };
 }
 
 async function seedUsers(client, orgId) {

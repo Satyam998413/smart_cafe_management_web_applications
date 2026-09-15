@@ -128,11 +128,29 @@ export const serializeSite = (site) => {
 
 export const serializeSpace = (space) => {
   if (!space) return null;
+  let kind = space.kind;
+  let description = space.description ?? null;
+
+  if (description && description.includes('[kind:pickup_station]')) {
+    kind = 'pickup_station';
+    description = description.replace(/\[kind:pickup_station\]\s*/, '').trim() || null;
+  } else if (description && description.includes('[kind:corridor]')) {
+    kind = 'corridor';
+    description = description.replace(/\[kind:corridor\]\s*/, '').trim() || null;
+  } else if (description && description.includes('[kind:building]')) {
+    kind = 'building';
+    description = description.replace(/\[kind:building\]\s*/, '').trim() || null;
+  } else if (space.kind === 'table' && space.label && space.label.toLowerCase().includes('pickup')) {
+    kind = 'pickup_station';
+  } else if (space.kind === 'hall' && space.label && space.label.toLowerCase().includes('corridor')) {
+    kind = 'corridor';
+  }
+
   return {
     id: space.id,
     siteId: space.site_id,
     parentSpaceId: space.parent_space_id,
-    kind: space.kind,
+    kind,
     label: space.label,
     number: space.number,
     isBookable: space.is_bookable,
@@ -140,7 +158,7 @@ export const serializeSpace = (space) => {
     sortOrder: space.sort_order,
     // Room-specific (hotel premise) — null/unused for every other kind.
     pricePerNight: toNumber(space.price_per_night),
-    description: space.description ?? null,
+    description,
     maxOccupancy: space.max_occupancy ?? null,
     // Real-world size in meters (length = x/horizontal, width = y/vertical)
     // — lets SpaceLayoutCanvas draw this space at its actual proportions.

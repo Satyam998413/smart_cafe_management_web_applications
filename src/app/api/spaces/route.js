@@ -85,19 +85,35 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
     }
 
+    const DB_KIND_MAP = {
+      pickup_station: 'table',
+      corridor: 'hall',
+      building: 'floor'
+    };
+    const dbKind = DB_KIND_MAP[kind] || kind;
+    let spaceDescription = description || null;
+    if (DB_KIND_MAP[kind]) {
+      const tag = `[kind:${kind}]`;
+      if (!spaceDescription) {
+        spaceDescription = tag;
+      } else if (!spaceDescription.includes(tag)) {
+        spaceDescription = `${tag} ${spaceDescription}`;
+      }
+    }
+
     const { data, error } = await supabase
       .from('spaces')
       .insert({
         site_id: siteId,
         parent_space_id: parentSpaceId || null,
-        kind,
+        kind: dbKind,
         label,
         number: number || null,
         is_bookable: Boolean(isBookable),
         iot_enabled: Boolean(iotEnabled),
         sort_order: sortOrder ?? 0,
         price_per_night: pricePerNight ?? null,
-        description: description || null,
+        description: spaceDescription,
         max_occupancy: maxOccupancy ?? null,
         length: length ?? null,
         width: width ?? null

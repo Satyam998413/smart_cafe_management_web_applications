@@ -6,22 +6,154 @@
  */
 
 export const DEFAULT_ORG = {
-  name: 'Smart Cafe Demo',
+  name: 'Cremen Smart Spaces Demo',
   premiseType: 'cafe_restaurant',
-  contactEmail: 'contact@smartcafe.test',
+  contactEmail: 'contact@cremensmart.test',
   planTier: 'standard'
 };
 
 export const DEFAULT_SITE = {
-  name: 'Smart Cafe - Main Branch',
+  name: 'Cremen Smart Spaces — Main Headquarters',
   address: 'MG Road, Bengaluru, Karnataka, India',
   lat: 12.9716,
   lng: 77.5946
 };
 
+// 5-Floor hierarchy structure with 2 corridors per floor, canteens, halls, rooms, tables, and pickup stations
+export const DEFAULT_MULTI_FLOOR_STRUCTURE = [
+  {
+    label: 'Floor 1 — Main Ground Level Reception & Central Canteen',
+    number: '1',
+    length: 15,
+    width: 10,
+    children: [
+      {
+        kind: 'canteen',
+        label: 'Central Cafe & Canteen',
+        number: 'C1',
+        posX: 30,
+        posY: 35,
+        length: 8,
+        width: 6,
+        tables: [
+          { number: '101', label: 'Table 101', posX: 20, posY: 30 },
+          { number: '102', label: 'Table 102', posX: 50, posY: 30 },
+          { number: '103', label: 'Table 103', posX: 80, posY: 30 },
+          { number: '104', label: 'Table 104', posX: 35, posY: 70 },
+          { number: 'PS-1', label: 'Pickup Station (Dispatch Table)', kind: 'pickup_station', posX: 70, posY: 70 }
+        ]
+      },
+      { kind: 'corridor', label: 'North Entrance Corridor', number: 'COR-101', posX: 15, posY: 80, length: 12, width: 2 },
+      { kind: 'corridor', label: 'South Gallery Corridor', number: 'COR-102', posX: 85, posY: 80, length: 12, width: 2 },
+      { kind: 'hall', label: 'Grand Reception Hall', number: 'H-101', posX: 75, posY: 35, length: 6, width: 6 }
+    ]
+  },
+  {
+    label: 'Floor 2 — Executive Lounge & Workspaces',
+    number: '2',
+    length: 16,
+    width: 10,
+    children: [
+      {
+        kind: 'canteen',
+        label: 'Executive Lounge Cafe',
+        number: 'C2',
+        posX: 30,
+        posY: 40,
+        length: 7,
+        width: 5,
+        tables: [
+          { number: '201', label: 'Executive Table 201', posX: 25, posY: 35 },
+          { number: '202', label: 'Executive Table 202', posX: 60, posY: 35 },
+          { number: '203', label: 'Co-Working Table 203', posX: 40, posY: 75 }
+        ]
+      },
+      { kind: 'room', label: 'Executive Suite 201', number: '201', posX: 70, posY: 30, isBookable: true, length: 5, width: 4 },
+      { kind: 'room', label: 'Meeting Room 202', number: '202', posX: 85, posY: 30, isBookable: true, length: 5, width: 4 },
+      { kind: 'corridor', label: 'Executive West Corridor', number: 'COR-201', posX: 20, posY: 85, length: 10, width: 2 },
+      { kind: 'corridor', label: 'Executive East Corridor', number: 'COR-202', posX: 75, posY: 85, length: 10, width: 2 }
+    ]
+  },
+  {
+    label: 'Floor 3 — Conference Center & Banquet Space',
+    number: '3',
+    length: 18,
+    width: 12,
+    children: [
+      {
+        kind: 'canteen',
+        label: 'Conference Express Cafe',
+        number: 'C3',
+        posX: 25,
+        posY: 35,
+        length: 6,
+        width: 5,
+        tables: [
+          { number: '301', label: 'Conference Table 301', posX: 30, posY: 40 },
+          { number: '302', label: 'Conference Table 302', posX: 70, posY: 40 }
+        ]
+      },
+      { kind: 'hall', label: 'Grand Banquet Hall A', number: 'H-301', posX: 65, posY: 35, length: 10, width: 8 },
+      { kind: 'corridor', label: 'Banquet Hall Corridor', number: 'COR-301', posX: 25, posY: 80, length: 14, width: 2 },
+      { kind: 'corridor', label: 'Service Staff Corridor', number: 'COR-302', posX: 75, posY: 80, length: 14, width: 2 }
+    ]
+  },
+  {
+    label: 'Floor 4 — Premium Suites & Quiet Zone',
+    number: '4',
+    length: 16,
+    width: 10,
+    children: [
+      {
+        kind: 'canteen',
+        label: 'Quiet Study Cafe',
+        number: 'C4',
+        posX: 30,
+        posY: 35,
+        length: 6,
+        width: 5,
+        tables: [
+          { number: '401', label: 'Quiet Study Table 401', posX: 30, posY: 35 },
+          { number: '402', label: 'Quiet Study Table 402', posX: 70, posY: 35 }
+        ]
+      },
+      { kind: 'room', label: 'Premium Suite 401', number: '401', posX: 70, posY: 30, isBookable: true, length: 6, width: 5 },
+      { kind: 'room', label: 'Premium Suite 402', number: '402', posX: 88, posY: 30, isBookable: true, length: 6, width: 5 },
+      { kind: 'corridor', label: 'North Quiet Corridor', number: 'COR-401', posX: 20, posY: 85, length: 12, width: 2 },
+      { kind: 'corridor', label: 'South Suite Corridor', number: 'COR-402', posX: 80, posY: 85, length: 12, width: 2 }
+    ]
+  },
+  {
+    label: 'Floor 5 — Rooftop Sky Canteen & Open Terrace',
+    number: '5',
+    length: 20,
+    width: 12,
+    children: [
+      {
+        kind: 'canteen',
+        label: 'Rooftop Sky Canteen & Bar',
+        number: 'C5',
+        posX: 35,
+        posY: 35,
+        length: 10,
+        width: 6,
+        tables: [
+          { number: '501', label: 'Sky Deck Table 501', posX: 20, posY: 35 },
+          { number: '502', label: 'Sky Deck Table 502', posX: 50, posY: 35 },
+          { number: '503', label: 'VIP Cabana Table 503', posX: 80, posY: 35 },
+          { number: '504', label: 'Sunset Lounge Table 504', posX: 50, posY: 75 }
+        ]
+      },
+      { kind: 'hall', label: 'Rooftop Event Pavilion', number: 'H-501', posX: 80, posY: 35, length: 8, width: 6 },
+      { kind: 'corridor', label: 'Sky Garden Pathway East', number: 'COR-501', posX: 25, posY: 85, length: 15, width: 2 },
+      { kind: 'corridor', label: 'Sky Terrace Pathway West', number: 'COR-502', posX: 75, posY: 85, length: 15, width: 2 }
+    ]
+  }
+];
+
 export const DEFAULT_SPACES = {
-  floorLabel: 'Ground Floor',
-  tableNumbers: [1, 2, 3, 4, 5, 6]
+  floorLabel: 'Floor 1 — Main Ground Level Reception & Central Canteen',
+  tableNumbers: [101, 102, 103, 104, 201, 202]
 };
 
 export const DEFAULT_WALLET = {
@@ -29,19 +161,11 @@ export const DEFAULT_WALLET = {
   lowBalanceThreshold: 50
 };
 
-// Platform-wide recharge catalog (not org-scoped) — same two plans
-// server/supabase/schema.sql used to seed idempotently by name. Upserted by
-// seed.js, never removed by clean.js since other orgs may already reference
-// them via coin_purchases.
 export const DEFAULT_COIN_PLANS = [
   { name: 'Starter', priceInr: 500.0, coinsGranted: 500, bonusCoins: 0, sortOrder: 1 },
   { name: 'Value', priceInr: 1000.0, coinsGranted: 1000, bonusCoins: 100, sortOrder: 2 }
 ];
 
-// One password-holding account per staff role (login via
-// POST /api/auth/staff-login), plus a few password-less customers (login via
-// POST /api/auth/customer-login, identified by email/phone + hiveId).
-// master_admin is platform-level — org_id stays null for that row.
 export const DEFAULT_USERS = [
   { role: 'master_admin', name: 'Master Admin', email: 'master.admin@smartcafe.test', phone: '+91-90000-00001', password: 'MasterAdmin@123' },
   { role: 'owner', name: 'Owner Demo', email: 'owner@smartcafe.test', phone: '+91-90000-00002', password: 'Owner@123' },
@@ -92,18 +216,8 @@ export const DEFAULT_MENU_ITEMS = [
   { name: 'Bottled Water', price: 1.99, description: 'Still or sparkling', category: 'beverage', image_url: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&auto=format&fit=crop' }
 ];
 
-// Beverages plausibly take "Sugar Level"/"Milk" modifiers — mirrors the
-// option groups the app's menu-editor UI already knows how to render.
 export const BEVERAGE_OPTION_ITEM_NAMES = ['Cappuccino', 'Latte', 'Iced Coffee'];
 
-// ---------------------------------------------------------------------------
-// Hotel demo data — a second, independent organization (premise_type
-// 'hotel') so the seed covers both premise types the app supports, not just
-// the cafe/restaurant one above. Kept as its own org rather than added onto
-// DEFAULT_ORG since a cafe and a hotel are different tenants in real usage;
-// having two lets `npm run seed` demonstrate the room/booking/IoT-per-room
-// features without disturbing the existing cafe demo at all.
-// ---------------------------------------------------------------------------
 export const DEFAULT_HOTEL_ORG = {
   name: 'Smart Stay Hotel Demo',
   premiseType: 'hotel',
@@ -127,11 +241,6 @@ const ROOM_IMAGE_POOL = [
   'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&auto=format&fit=crop'
 ];
 
-// Three floors, each with a handful of rooms of varying type/price —
-// `parent_space_id` (set in seed.js once the floor row exists) puts every
-// room under its floor, same floor->table nesting DEFAULT_SPACES already
-// uses for the cafe, just with kind='room' and the hotel-only columns
-// (price_per_night/description/max_occupancy) migration 0005 added.
 export const DEFAULT_HOTEL_FLOORS = [
   {
     label: 'Ground Floor',
@@ -158,10 +267,6 @@ export const DEFAULT_HOTEL_FLOORS = [
   }
 ];
 
-// Typical in-room electrical equipment — the same lamp/fan/ac/other
-// taxonomy the Devices dashboard's registration form already offers.
-// `quantity` mirrors POST /api/iot-devices's own quantity field: one row
-// per physical device, not a count column on a single row.
 export const DEFAULT_ROOM_EQUIPMENT = [
   { type: 'lamp', name: 'Bedside Lamp', quantity: 2 },
   { type: 'fan', name: 'Ceiling Fan', quantity: 1 },
@@ -169,11 +274,6 @@ export const DEFAULT_ROOM_EQUIPMENT = [
   { type: 'other', name: 'Room TV', quantity: 1 }
 ];
 
-// Placed on the floor-plan canvas at fixed spots per room (percentage x/y),
-// cycling through whichever devices a room actually has — so opening
-// Devices -> Floor Plan for any seeded room shows a populated layout
-// instead of an empty canvas, with the last device or two left in the
-// "unplaced" tray to also demonstrate that state.
 export const DEFAULT_EQUIPMENT_POSITIONS = [
   { posX: 15, posY: 20 },
   { posX: 85, posY: 20 },
@@ -193,13 +293,6 @@ export const DEFAULT_HOTEL_USERS = [
 
 export const DEFAULT_HOTEL_WALLET = { balanceCoins: 800, lowBalanceThreshold: 100 };
 
-// Bookings reference a room by [floorIndex, roomIndex] into
-// DEFAULT_HOTEL_FLOORS and a guest by index into the customer entries of
-// DEFAULT_HOTEL_USERS (resolved to real ids in seed.js once both exist) —
-// dates are relative to seed time (checkInOffsetDays from today) so the
-// demo data never goes stale. Deliberately covers every status the
-// `bookings.status` check constraint allows, so the Bookings page has at
-// least one example of each.
 export const DEFAULT_BOOKINGS = [
   { roomRef: [0, 1], guestIndex: 0, checkInOffsetDays: -5, nights: 3, numGuests: 2, status: 'checked_out' },
   { roomRef: [0, 2], guestIndex: 1, checkInOffsetDays: 0, nights: 2, numGuests: 1, status: 'checked_in' },

@@ -41,7 +41,7 @@ const getTypeIcon = (type) => DEVICE_TYPES.find((t) => t.value === type)?.icon |
  * device-state socket event yet (only `bill_update` exists), so a short
  * poll is the freshness mechanism while a space is open.
  */
-export default function IotDevicesPage({ apiFetch }) {
+export default function IotDevicesPage({ apiFetch, authRole }) {
   const [sites, setSites] = useState([]);
   const [sitesLoading, setSitesLoading] = useState(true);
   const [sitesError, setSitesError] = useState('');
@@ -428,8 +428,10 @@ export default function IotDevicesPage({ apiFetch }) {
               spaceLabel={selectedSpace?.label || 'Space'}
               spaceLength={selectedSpace?.length}
               spaceWidth={selectedSpace?.width}
+              spaceId={spaceId}
               apiFetch={apiFetch}
               onDeviceMoved={loadDevices}
+              authRole={authRole}
             />
           ) : (
             <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} variants={listVariants} initial="hidden" animate="show">
