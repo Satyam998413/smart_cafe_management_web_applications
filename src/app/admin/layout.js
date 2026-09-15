@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Building2, Coins, LogOut, Megaphone, Menu, ShieldCheck, Sparkles, Ticket, X, User } from 'lucide-react';
 import { createAdminApiFetch } from '@/lib/adminApiClient';
 import { AdminContext } from '@/features/admin/AdminContext';
-import AdminLoginPage from '@/features/admin/AdminLoginPage';
+import ThemeToggle from '@/components/ThemeToggle';
+import AdminThemeSettings from '@/features/admin/AdminThemeSettings';
 
 const NAV_ITEMS = [
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
@@ -18,14 +19,12 @@ const NAV_ITEMS = [
   { href: '/admin/activity', label: 'Activity', icon: Activity }
 ];
 
-import ThemeToggle from '@/components/ThemeToggle';
-import AdminThemeSettings from '@/features/admin/AdminThemeSettings';
-
 export default function AdminLayout({ children }) {
   const [token, setToken] = useState(undefined);
   const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const storedToken = localStorage.getItem('admin_token') || '';
@@ -39,6 +38,13 @@ export default function AdminLayout({ children }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (pathname === '/admin/login') return;
+    if (token === '') {
+      router.replace('/admin/login');
+    }
+  }, [token, pathname, router]);
+
   const logout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_role');
@@ -46,19 +52,14 @@ export default function AdminLayout({ children }) {
     localStorage.removeItem('admin_user_id');
     setToken('');
     setUser(null);
+    router.replace('/admin/login');
   };
 
-  const handleLoginSuccess = (newToken, loggedInUser) => {
-    localStorage.setItem('admin_token', newToken);
-    localStorage.setItem('admin_role', loggedInUser.role);
-    localStorage.setItem('admin_name', loggedInUser.name || 'Alex Mercer');
-    localStorage.setItem('admin_user_id', loggedInUser.id || '');
-    setToken(newToken);
-    setUser({ name: loggedInUser.name || 'Alex Mercer', id: loggedInUser.id });
-  };
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
 
-  if (token === undefined) return null;
-  if (!token) return <AdminLoginPage onLoginSuccess={handleLoginSuccess} />;
+  if (token === undefined || !token) return null;
 
   const apiFetch = createAdminApiFetch(logout);
 
