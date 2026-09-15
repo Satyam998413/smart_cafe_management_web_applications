@@ -88,19 +88,88 @@ export default function DeliveryPage({ apiFetch, orders, onOrderUpdated }) {
   const deliveryOrders = (orders || []).filter((o) => o.orderType === 'delivery');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Delivery</h2>
-        <SegmentedToggle options={SUB_TABS} value={subTab} onChange={setSubTab} />
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Truck size={22} color="var(--accent-primary)" /> Delivery Console
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Manage delivery orders, riders, and pincode service zones.
+          </p>
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Sub Tab Navigation */}
+        <div>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-secondary)', display: 'block' }}>
+            Console Section
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-surface)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+            {SUB_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSubTab(tab.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  background: subTab === tab.key ? 'var(--accent-primary)' : 'transparent',
+                  color: subTab === tab.key ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {tab.key === 'orders' ? <Truck size={15} /> : tab.key === 'riders' ? <Bike size={15} /> : <MapPin size={15} />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Delivery Metrics Summary */}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div>Active Delivery Orders: <strong>{deliveryOrders.length}</strong></div>
+          <div>Registered Riders: <strong>{riders.length}</strong></div>
+          <div>Active Delivery Zones: <strong>{zones.length}</strong></div>
+        </div>
       </div>
 
-      {subTab === 'orders' && <DeliveryOrdersPanel orders={deliveryOrders} riders={riders} apiFetch={apiFetch} onOrderUpdated={onOrderUpdated} />}
-      {subTab === 'riders' && (
-        <RidersPanel riders={riders} loading={ridersLoading} error={ridersError} apiFetch={apiFetch} onCreated={loadRiders} />
-      )}
-      {subTab === 'zones' && (
-        <ZonesPanel zones={zones} loading={zonesLoading} error={zonesError} sites={sites} apiFetch={apiFetch} onSaved={loadZones} />
-      )}
+      {/* Main Right Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {subTab === 'orders' && <DeliveryOrdersPanel orders={deliveryOrders} riders={riders} apiFetch={apiFetch} onOrderUpdated={onOrderUpdated} />}
+        {subTab === 'riders' && (
+          <RidersPanel riders={riders} loading={ridersLoading} error={ridersError} apiFetch={apiFetch} onCreated={loadRiders} />
+        )}
+        {subTab === 'zones' && (
+          <ZonesPanel zones={zones} loading={zonesLoading} error={zonesError} sites={sites} apiFetch={apiFetch} onSaved={loadZones} />
+        )}
+      </div>
     </div>
   );
 }

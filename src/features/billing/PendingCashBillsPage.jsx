@@ -60,51 +60,90 @@ export default function PendingCashBillsPage({ apiFetch, socket }) {
     }
   };
 
+  const pendingTotal = pendingCash.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Pending Cash Collection</h2>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Banknote size={22} color="var(--accent-primary)" /> Cash Bills
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Monitor and collect pending cash payments from guests in real time.
+          </p>
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Live Socket Connection Badge */}
+        {!socket ? (
+          <div style={{ padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <WifiOff size={15} /> Real-time feed disconnected
+          </div>
+        ) : (
+          <div style={{ padding: '0.6rem 0.85rem', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#10b981', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="dot" /> Real-time live feed connected
+          </div>
+        )}
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Cash Metrics */}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div>Pending Cash Bills: <strong>{pendingCash.length}</strong></div>
+          <div>Total Cash to Collect: <strong>₹{pendingTotal.toFixed(0)}</strong></div>
+        </div>
       </div>
 
-      {!socket && (
-        <div
-          className="glass-card"
-          style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--status-cancelled)', fontSize: '0.85rem' }}
-        >
-          <WifiOff size={16} />
-          Real-time updates aren&apos;t connected — new cash payments may not appear until you reconnect.
-        </div>
-      )}
-
-      {pendingCash.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
-        >
-          <Banknote size={28} strokeWidth={1.5} />
-          No cash payments waiting right now — new ones will appear here the moment a guest chooses to pay with cash.
-        </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
-          {pendingCash.map((bill) => (
-            <motion.div key={bill.id} className="glass-card entity-row" variants={rowVariants} layout>
-              <div className="entity-icon">
-                <Banknote size={18} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>₹{Number(bill.totalAmount).toFixed(2)}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  Bill #{bill.id.slice(-6).toUpperCase()} · {new Date(bill.createdAt).toLocaleTimeString()}
+      {/* Main Right Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {pendingCash.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
+          >
+            <Banknote size={36} strokeWidth={1.5} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>No Cash Payments Pending</h3>
+            <p style={{ fontSize: '0.85rem', maxWidth: 380 }}>New cash bill notifications will appear here instantly when guests request cash payment.</p>
+          </div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
+            {pendingCash.map((bill) => (
+              <motion.div key={bill.id} className="glass-card entity-row" variants={rowVariants} layout>
+                <div className="entity-icon">
+                  <Banknote size={18} />
                 </div>
-                {errorsById[bill.id] && <div style={{ fontSize: '0.78rem', color: 'var(--status-cancelled)', marginTop: '0.2rem' }}>{errorsById[bill.id]}</div>}
-              </div>
-              <Button variant="primary" size="sm" loading={collectingIds.has(bill.id)} disabled={collectingIds.has(bill.id)} onClick={() => handleCollect(bill.id)}>
-                Mark Collected
-              </Button>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 700 }}>₹{Number(bill.totalAmount).toFixed(2)}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Bill #{bill.id.slice(-6).toUpperCase()} · {new Date(bill.createdAt).toLocaleTimeString()}
+                  </div>
+                  {errorsById[bill.id] && <div style={{ fontSize: '0.78rem', color: 'var(--status-cancelled)', marginTop: '0.2rem' }}>{errorsById[bill.id]}</div>}
+                </div>
+                <Button variant="primary" size="sm" loading={collectingIds.has(bill.id)} disabled={collectingIds.has(bill.id)} onClick={() => handleCollect(bill.id)}>
+                  Mark Collected
+                </Button>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

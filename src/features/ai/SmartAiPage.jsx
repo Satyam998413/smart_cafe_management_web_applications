@@ -99,78 +99,137 @@ export default function SmartAiPage({ apiFetch, authName, menu, cartApi }) {
   };
 
   return (
-    <motion.div
-      className="glass-card"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      style={{ display: 'flex', flexDirection: 'column', height: '75vh' }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1rem', borderBottom: '1px solid var(--border)' }}>
-        <strong style={{ color: 'var(--text-primary)' }}>✨ Smart AI</strong>
-        {cartApi.cartItemCount > 0 && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            <ShoppingCart size={14} /> {cartApi.cartItemCount} · ${cartApi.cartTotal.toFixed(2)}
-          </span>
-        )}
-        <SegmentedToggle
-          options={[
-            { key: 'voice', label: 'Voice' },
-            { key: 'chat', label: 'Chat' }
-          ]}
-          value={activeSubTab}
-          onChange={setActiveSubTab}
-          style={{ marginLeft: 'auto', width: '11rem' }}
-        />
-      </div>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 320px Sticky Left Control Panel */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>Smart AI Waiter</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Hands-free voice ordering & AI text assistant.
+          </p>
+        </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: activeSubTab === 'voice' ? 'flex' : 'none', flexDirection: 'column' }}>
-        <SmartAiVoiceTab
-          apiFetch={apiFetch}
-          menu={menu}
-          cartApi={cartApi}
-          messages={messages}
-          setMessages={setMessages}
-          initialGreetingText={buildSpokenGreeting(authName || 'there')}
-          onSwitchToTab={() => setActiveSubTab('chat')}
-          onOpenOptionsPrompt={(item, quantity) => setPendingOptions({ item, quantity })}
-          onPlaceOrder={handlePlaceOrderFromChat}
-          onAddMore={handleAddMore}
-        />
-      </div>
+        {/* Mode Selector */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Interaction Mode
+          </label>
+          <SegmentedToggle
+            options={[
+              { key: 'voice', label: '🎙️ Voice' },
+              { key: 'chat', label: '💬 Chat' }
+            ]}
+            value={activeSubTab}
+            onChange={setActiveSubTab}
+            style={{ width: '100%' }}
+          />
+        </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: activeSubTab === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
-        <SmartAiChatTab
-          apiFetch={apiFetch}
-          menu={menu}
-          cartApi={cartApi}
-          messages={messages}
-          setMessages={setMessages}
-          onOpenOptionsPrompt={(item, quantity) => setPendingOptions({ item, quantity })}
-          onPlaceOrder={handlePlaceOrderFromChat}
-          onAddMore={handleAddMore}
-        />
-      </div>
-
-      {pendingOptions && (
-        <MenuItemOptionsModal
-          item={pendingOptions.item}
-          onClose={() => setPendingOptions(null)}
-          onConfirm={(selectedOptions) => {
-            cartApi.addToCart(pendingOptions.item, pendingOptions.quantity, selectedOptions);
-            const summary = selectedOptions.length > 0 ? ` (${selectedOptions.map((o) => o.choiceLabel).join(', ')})` : '';
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: `Added ${pendingOptions.quantity}× ${pendingOptions.item.name}${summary} to your cart 🎉`,
-                timestamp: new Date().toISOString()
-              }
-            ]);
-            setPendingOptions(null);
+        {/* Cart Quick Action */}
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
           }}
-        />
-      )}
-    </motion.div>
+        >
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Your Cart
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <ShoppingCart size={14} /> Items
+            </span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{cartApi.cartItemCount}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total</span>
+            <span style={{ fontWeight: 700, color: 'var(--accent-secondary)' }}>${cartApi.cartTotal.toFixed(2)}</span>
+          </div>
+          {cartApi.cartItemCount > 0 && (
+            <button className="btn-orange" onClick={handlePlaceOrderFromChat} style={{ width: '100%', marginTop: '0.25rem', justifyContent: 'center' }}>
+              Place Order
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Right Main Content Panel */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <motion.div
+          className="glass-card"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          style={{ display: 'flex', flexDirection: 'column', height: '75vh' }}
+        >
+          <div style={{ flex: 1, minHeight: 0, display: activeSubTab === 'voice' ? 'flex' : 'none', flexDirection: 'column' }}>
+            <SmartAiVoiceTab
+              apiFetch={apiFetch}
+              menu={menu}
+              cartApi={cartApi}
+              messages={messages}
+              setMessages={setMessages}
+              initialGreetingText={buildSpokenGreeting(authName || 'there')}
+              onSwitchToTab={() => setActiveSubTab('chat')}
+              onOpenOptionsPrompt={(item, quantity) => setPendingOptions({ item, quantity })}
+              onPlaceOrder={handlePlaceOrderFromChat}
+              onAddMore={handleAddMore}
+            />
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, display: activeSubTab === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
+            <SmartAiChatTab
+              apiFetch={apiFetch}
+              menu={menu}
+              cartApi={cartApi}
+              messages={messages}
+              setMessages={setMessages}
+              onOpenOptionsPrompt={(item, quantity) => setPendingOptions({ item, quantity })}
+              onPlaceOrder={handlePlaceOrderFromChat}
+              onAddMore={handleAddMore}
+            />
+          </div>
+
+          {pendingOptions && (
+            <MenuItemOptionsModal
+              item={pendingOptions.item}
+              onClose={() => setPendingOptions(null)}
+              onConfirm={(selectedOptions) => {
+                cartApi.addToCart(pendingOptions.item, pendingOptions.quantity, selectedOptions);
+                const summary = selectedOptions.length > 0 ? ` (${selectedOptions.map((o) => o.choiceLabel).join(', ')})` : '';
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: 'assistant',
+                    content: `Added ${pendingOptions.quantity}× ${pendingOptions.item.name}${summary} to your cart 🎉`,
+                    timestamp: new Date().toISOString()
+                  }
+                ]);
+                setPendingOptions(null);
+              }}
+            />
+          )}
+        </motion.div>
+      </div>
+    </div>
   );
 }

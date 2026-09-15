@@ -68,21 +68,37 @@ export default function NavLinks({ authRole, premiseType, badges = {} }) {
       ];
 
   return (
-    <nav className="tabs-bar">
+    <nav className="main-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>
       {links.map((t) => {
         const Icon = t.icon;
-        const isActive = pathname === t.href || pathname.startsWith(`${t.href}/`);
+        const isActive = pathname === t.href || (t.href !== '/' && pathname.startsWith(`${t.href}/`));
         return (
-          <Link key={t.href} href={t.href} className={`tab-button ${isActive ? 'active' : ''}`}>
+          <Link
+            key={t.href}
+            href={t.href}
+            className={`tab-button ${isActive ? 'active' : ''}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.65rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              width: '100%',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}
+          >
             {isActive && (
               <motion.span
                 layoutId={layoutId}
                 className="tab-pill"
+                style={{ borderRadius: 'var(--radius-md)' }}
                 transition={{ type: 'spring', stiffness: 500, damping: 34 }}
               />
             )}
-            <Icon size={16} strokeWidth={2} style={{ position: 'relative', zIndex: 1 }} />
-            <span style={{ position: 'relative', zIndex: 1 }}>{t.label}</span>
+            <Icon size={18} strokeWidth={2} style={{ position: 'relative', zIndex: 1 }} />
+            <span style={{ position: 'relative', zIndex: 1, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.label}</span>
             {badges[t.href] > 0 && (
               <span className="nav-badge" style={{ position: 'relative', zIndex: 1 }}>
                 {badges[t.href]}
@@ -94,3 +110,4 @@ export default function NavLinks({ authRole, premiseType, badges = {} }) {
     </nav>
   );
 }
+

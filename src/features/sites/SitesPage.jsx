@@ -104,86 +104,128 @@ export default function SitesPage({ apiFetch, authRole, onOpenLayout }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 320px Sticky Left Control Panel */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Sites</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>Your organization&apos;s branches and properties.</p>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>Sites & Branches</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Your organization&apos;s physical branches and premises.
+          </p>
         </div>
+
         {isOwner && (
-          <Button variant="primary" onClick={openAdd}>
+          <Button variant="primary" onClick={openAdd} fullWidth>
             + Add Site
           </Button>
         )}
+
+        <div
+          style={{
+            padding: '1rem',
+            background: 'var(--bg-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}
+        >
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Sites Overview
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Registered</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{sites.length}</span>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="glass-card staff-row">
-              <Skeleton width={40} height={40} radius="50%" />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <Skeleton width="30%" height="0.9rem" />
-                <Skeleton width="45%" height="0.75rem" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
-          <Button variant="secondary" onClick={load}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : sites.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <Building2 size={28} strokeWidth={1.5} />
-          No sites yet.
-          {isOwner && (
-            <Button variant="primary" size="sm" onClick={openAdd}>
-              Add your first site
-            </Button>
-          )}
-        </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
-          {sites.map((site) => (
-            <motion.div key={site.id} className="glass-card staff-row" variants={rowVariants}>
-              <div className="staff-avatar" style={{ borderRadius: 'var(--radius-md)' }}>
-                <Building2 size={18} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{site.name}</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  {site.address ? (
-                    <>
-                      <MapPin size={12} /> {site.address}
-                    </>
-                  ) : (
-                    'No address on file'
-                  )}
+      {/* Right Main Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="glass-card staff-row">
+                <Skeleton width={40} height={40} radius="50%" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <Skeleton width="30%" height="0.9rem" />
+                  <Skeleton width="45%" height="0.75rem" />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {onOpenLayout && (
-                  <Button variant="ghost" size="sm" onClick={() => onOpenLayout(site)}>
-                    Layout <ArrowRight size={14} />
-                  </Button>
-                )}
-                {isOwner && (
-                  <button className="icon-btn" onClick={() => openEdit(site)} title="Edit site">
-                    <Pencil size={15} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+            ))}
+          </div>
+        ) : error ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
+            <Button variant="secondary" onClick={load}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : sites.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <Building2 size={28} strokeWidth={1.5} />
+            No sites yet.
+            {isOwner && (
+              <Button variant="primary" size="sm" onClick={openAdd}>
+                Add your first site
+              </Button>
+            )}
+          </div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
+            {sites.map((site) => (
+              <motion.div key={site.id} className="glass-card staff-row" variants={rowVariants}>
+                <div className="staff-avatar" style={{ borderRadius: 'var(--radius-md)' }}>
+                  <Building2 size={18} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>{site.name}</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {site.address ? (
+                      <>
+                        <MapPin size={12} /> {site.address}
+                      </>
+                    ) : (
+                      'No address on file'
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {onOpenLayout && (
+                    <Button variant="ghost" size="sm" onClick={() => onOpenLayout(site)}>
+                      Layout <ArrowRight size={14} />
+                    </Button>
+                  )}
+                  {isOwner && (
+                    <button className="icon-btn" onClick={() => openEdit(site)} title="Edit site">
+                      <Pencil size={15} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </div>
+
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={440}>

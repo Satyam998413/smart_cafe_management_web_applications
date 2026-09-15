@@ -30,6 +30,8 @@ export default function StaffPage({ apiFetch, authRole }) {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState('add'); // 'add' | 'edit'
@@ -148,20 +150,22 @@ export default function StaffPage({ apiFetch, authRole }) {
 
   const handleTogglePermission = async (person, key) => {
     const pendingKey = `${person.id}:${key}`;
-    const nextValue = !person.permissions?.[key];
     setPermissionPending((prev) => ({ ...prev, [pendingKey]: true }));
     setPermissionErrors((prev) => ({ ...prev, [pendingKey]: '' }));
     try {
-      const res = await apiFetch(`/staff/${person.id}/permissions`, { method: 'PATCH', ...jsonBody({ [key]: nextValue }) });
+      const nextValue = !person.permissions?.[key];
+      const res = await apiFetch(`/staff/${person.id}/permissions`, {
+        method: 'PATCH',
+        ...jsonBody({ [key]: nextValue })
+      });
       const data = await res.json();
       if (!res.ok) {
-        setPermissionErrors((prev) => ({ ...prev, [pendingKey]: data.message || 'Failed to update permission.' }));
+        setPermissionErrors((prev) => ({ ...prev, [pendingKey]: data.message || 'Failed' }));
         return;
       }
-      setStaff((prev) => prev.map((p) => (p.id === person.id ? { ...p, permissions: data.permissions } : p)));
+      setStaff((prev) => prev.map((s) => (s.id === person.id ? { ...s, permissions: data.permissions } : s)));
     } catch (e) {
-      console.error('Failed to update staff permission:', e);
-      setPermissionErrors((prev) => ({ ...prev, [pendingKey]: 'Network error — please try again.' }));
+      setPermissionErrors((prev) => ({ ...prev, [pendingKey]: 'Network error' }));
     } finally {
       setPermissionPending((prev) => ({ ...prev, [pendingKey]: false }));
     }
@@ -231,7 +235,13 @@ export default function StaffPage({ apiFetch, authRole }) {
   const openEdit = (person) => {
     setFormMode('edit');
     setEditingId(person.id);
-    setForm({ name: person.name || '', email: person.email || '', phone: person.phone || '', password: '', role: person.role });
+    setForm({
+      name: person.name || '',
+      email: person.email || '',
+      phone: person.phone || '',
+      password: '',
+      role: person.role || 'cook'
+    });
     setFormError('');
     setShowForm(true);
   };
@@ -239,8 +249,8 @@ export default function StaffPage({ apiFetch, authRole }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!form.email && !form.phone) {
-      setFormError('Email or phone is required.');
+    if (!form.name.trim()) {
+      setFormError('Name is required.');
       return;
     }
     setSaving(true);
@@ -295,50 +305,133 @@ export default function StaffPage({ apiFetch, authRole }) {
     }
   };
 
+  const filteredStaff = staff.filter((person) => {
+    if (roleFilter !== 'all' && person.role !== roleFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return (
+        person.name?.toLowerCase().includes(q) ||
+        person.email?.toLowerCase().includes(q) ||
+        person.phone?.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Staff Directory</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-            Manage staff accounts, site assignments, and manager permissions.
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Users size={22} color="var(--accent-primary)" /> Staff Directory
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Manage staff accounts, site assignments & manager permissions.
           </p>
         </div>
-        <button className="btn-orange" onClick={openAdd}>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Primary Action */}
+        <Button variant="primary" fullWidth onClick={openAdd}>
           + Add Staff Member
-        </button>
+        </Button>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Search & Role Filters */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.1rem', color: 'var(--text-secondary)', display: 'block' }}>
+            Filter Staff by Role
+          </label>
+
+          <input
+            type="text"
+            className="field-input"
+            style={{ height: '2.2rem', fontSize: '0.82rem', width: '100%' }}
+            placeholder="Search staff name, email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: 'All Roles' },
+              { id: 'cook', label: 'Cooks' },
+              { id: 'manager', label: 'Managers' },
+              { id: 'waiter', label: 'Waiters' }
+            ].map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`chip ${roleFilter === r.id ? 'active' : ''}`}
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem' }}
+                onClick={() => setRoleFilter(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Staff Metrics Summary */}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div>Total Staff: <strong>{staff.length}</strong></div>
+          <div>Cooks: <strong>{staff.filter((s) => s.role === 'cook').length}</strong></div>
+          <div>Managers: <strong>{staff.filter((s) => s.role === 'manager').length}</strong></div>
+          <div>Waiters: <strong>{staff.filter((s) => s.role === 'waiter').length}</strong></div>
+        </div>
       </div>
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="glass-card staff-row">
-              <Skeleton width={40} height={40} radius="50%" />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <Skeleton width="30%" height="0.9rem" />
-                <Skeleton width="45%" height="0.75rem" />
+      {/* Main Right Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="glass-card staff-row">
+                <Skeleton width={40} height={40} radius="50%" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <Skeleton width="30%" height="0.9rem" />
+                  <Skeleton width="45%" height="0.75rem" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
-          <Button variant="secondary" onClick={load}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : staff.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
-        >
-          <Users size={28} strokeWidth={1.5} />
-          No staff accounts yet.
-        </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
-          {staff.map((person) => {
+            ))}
+          </div>
+        ) : error ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{error}</span>
+            <Button variant="secondary" onClick={load}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : filteredStaff.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
+          >
+            <Users size={32} strokeWidth={1.5} />
+            No staff accounts match your filter criteria.
+          </div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} variants={listVariants} initial="hidden" animate="show">
+            {filteredStaff.map((person) => {
             const showPermissionToggles = authRole === 'owner' && person.role === 'manager';
             return (
               <motion.div key={person.id} className="glass-card" variants={rowVariants}>
@@ -412,6 +505,7 @@ export default function StaffPage({ apiFetch, authRole }) {
           })}
         </motion.div>
       )}
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={420}>

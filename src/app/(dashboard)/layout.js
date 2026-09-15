@@ -86,26 +86,63 @@ export default function DashboardLayout({ children }) {
 
   return (
     <DashboardContext.Provider value={state}>
-      <div className="app-root">
+      <div className="app-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <Header connected={connected} authName={authName} authRole={authRole} onLogout={clearAuth} />
 
-        <main className="dashboard-container">
-          <NotificationBanner apiFetch={apiFetch} authRole={authRole} socket={socket} onNavigateToWallet={() => router.push('/wallet')} />
-          <NavLinks authRole={authRole} premiseType={premiseType} />
+        <div style={{ display: 'flex', flex: 1, minWidth: 0 }}>
+          {/* Flush Vertical Left Navigation Sidebar attached to top Header */}
+          <aside
+            className="main-nav-sidebar"
+            style={{
+              width: 240,
+              flexShrink: 0,
+              position: 'sticky',
+              top: 65,
+              height: 'calc(100vh - 65px)',
+              background: 'var(--bg-surface)',
+              borderRight: '1px solid var(--border)',
+              padding: '1.25rem 0.85rem',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              zIndex: 40
+            }}
+          >
+            <NavLinks authRole={authRole} premiseType={premiseType} />
+          </aside>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
-              transition={springs.page}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </main>
+          {/* Main Dashboard Workspace */}
+          <main
+            className="dashboard-container"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '1.5rem 2rem',
+              maxWidth: 'none',
+              margin: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem'
+            }}
+          >
+            <NotificationBanner apiFetch={apiFetch} authRole={authRole} socket={socket} onNavigateToWallet={() => router.push('/wallet')} />
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }}
+                transition={springs.page}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
       </div>
     </DashboardContext.Provider>
   );
 }
+

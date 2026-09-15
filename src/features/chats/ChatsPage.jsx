@@ -66,61 +66,101 @@ function CookThreads({ apiFetch, myId, socket, isCustomer }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
-  if (selected) {
-    return (
-      <ThreadView
-        apiFetch={apiFetch}
-        socket={socket}
-        myId={myId}
-        userId={selected.userId}
-        title={selected.otherParty?.name || (isCustomer ? 'Your cook' : 'Customer')}
-        readOnly={false}
-        onBack={() => {
-          setSelected(null);
-          loadThreads();
-        }}
-      />
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{isCustomer ? 'My Chat' : 'Customer Chats'}</h2>
-      {loading ? (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading…
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageCircle size={22} color="var(--accent-primary)" /> {isCustomer ? 'My Chat Threads' : 'Customer Conversations'}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            {isCustomer ? 'Direct chat messages with your order cook.' : 'Live chat threads with customers who placed orders.'}
+          </p>
         </div>
-      ) : threads.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}
-        >
-          <MessageCircle size={28} strokeWidth={1.5} />
-          {isCustomer ? "Your order's cook will message you here once they claim your order." : 'No conversations yet — claim an order to start one.'}
-        </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
-          {threads.map((t) => (
-            <motion.div
-              key={t.userId}
-              className="glass-card staff-row"
-              variants={rowVariants}
-              style={{ cursor: 'pointer' }}
-              onClick={() => setSelected(t)}
-              whileHover={{ x: 2 }}
-            >
-              <div className="staff-avatar">{(t.otherParty?.name || '?')[0].toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{t.otherParty?.name || (isCustomer ? 'Your cook' : 'Customer')}</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {t.lastMessage?.body || 'Say hello 👋'}
-                </div>
-              </div>
-              {t.unreadCount > 0 && <span className="unread-badge">{t.unreadCount}</span>}
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {loading ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading threads…</div>
+        ) : threads.length === 0 ? (
+          <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageCircle size={24} strokeWidth={1.5} />
+            <span style={{ fontSize: '0.82rem' }}>
+              {isCustomer ? "Your order's cook will message you here once claimed." : 'No conversations yet — claim an order to start.'}
+            </span>
+          </div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
+            {threads.map((t) => {
+              const isSelected = selected?.userId === t.userId;
+              return (
+                <motion.div
+                  key={t.userId}
+                  className="glass-card staff-row"
+                  variants={rowVariants}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                    background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                  }}
+                  onClick={() => setSelected(t)}
+                  whileHover={{ x: 2 }}
+                >
+                  <div className="staff-avatar">{(t.otherParty?.name || '?')[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{t.otherParty?.name || (isCustomer ? 'Your cook' : 'Customer')}</strong>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {t.lastMessage?.body || 'Say hello 👋'}
+                    </div>
+                  </div>
+                  {t.unreadCount > 0 && <span className="unread-badge">{t.unreadCount}</span>}
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
+
+      {/* Main Right Content Panel (Active Chat Stream) */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selected ? (
+          <ThreadView
+            apiFetch={apiFetch}
+            socket={socket}
+            myId={myId}
+            userId={selected.userId}
+            title={selected.otherParty?.name || (isCustomer ? 'Your cook' : 'Customer')}
+            readOnly={false}
+            onBack={() => {
+              setSelected(null);
+              loadThreads();
+            }}
+          />
+        ) : (
+          <div className="glass-card" style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <MessageCircle size={36} strokeWidth={1.5} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Select a Conversation</h3>
+            <p style={{ fontSize: '0.85rem', maxWidth: 380 }}>Choose a chat thread from the left sidebar panel to read and send live messages.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -148,10 +188,6 @@ function ManagerOversight({ apiFetch, socket }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiFetch]);
 
-  // Requires the server to include 'role-manager' as an emit target on
-  // every chat_message (chats sendMessage / claim route's
-  // postClaimAutoMessages) — a manager is never the customer/cook
-  // recipient, so without that room they'd never receive this event at all.
   useEffect(() => {
     if (!socket) return undefined;
     const handler = () => loadOverview();
@@ -160,58 +196,97 @@ function ManagerOversight({ apiFetch, socket }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
-  if (selected) {
-    return (
-      <ThreadView
-        apiFetch={apiFetch}
-        socket={socket}
-        userId={selected.userId}
-        title={`${selected.userName} ↔ ${selected.cookName || 'unassigned'}`}
-        readOnly
-        managerView
-        onBack={() => setSelected(null)}
-      />
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Chat Oversight (read-only)</h2>
-      {loading ? (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading…
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageCircle size={22} color="var(--accent-primary)" /> Chat Oversight
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Read-only oversight of customer ↔ cook conversations.
+          </p>
         </div>
-      ) : overview.length === 0 ? (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          No customer conversations yet.
-        </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
-          {overview.map((row) => (
-            <motion.div
-              key={`${row.userId}-${row.cookId || 'none'}`}
-              className="glass-card staff-row"
-              variants={rowVariants}
-              whileHover={{ x: 2 }}
-              style={{ cursor: 'pointer' }}
-              onClick={() => setSelected(row)}
-            >
-              <div className="staff-avatar">{(row.userName || '?')[0].toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>{row.userName}</strong>
-                  <span style={{ color: 'var(--text-muted)' }}>↔</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{row.cookName || 'unassigned'}</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {row.lastMessage}
-                </div>
-              </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{row.messageCount} msgs</span>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {loading ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading oversight…</div>
+        ) : overview.length === 0 ? (
+          <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>No customer conversations yet.</div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
+            {overview.map((row) => {
+              const isSelected = selected?.userId === row.userId;
+              return (
+                <motion.div
+                  key={`${row.userId}-${row.cookId || 'none'}`}
+                  className="glass-card staff-row"
+                  variants={rowVariants}
+                  whileHover={{ x: 2 }}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                    background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                  }}
+                  onClick={() => setSelected(row)}
+                >
+                  <div className="staff-avatar">{(row.userName || '?')[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <strong style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{row.userName}</strong>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>↔</span>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{row.cookName || 'unassigned'}</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {row.lastMessage}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.messageCount} msgs</span>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
+
+      {/* Main Right Content Panel (Oversight Chat View) */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selected ? (
+          <ThreadView
+            apiFetch={apiFetch}
+            socket={socket}
+            userId={selected.userId}
+            title={`${selected.userName} ↔ ${selected.cookName || 'unassigned'}`}
+            readOnly
+            managerView
+            onBack={() => setSelected(null)}
+          />
+        ) : (
+          <div className="glass-card" style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <MessageCircle size={36} strokeWidth={1.5} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Select a Conversation to Inspect</h3>
+            <p style={{ fontSize: '0.85rem', maxWidth: 380 }}>Choose an active customer thread from the left sidebar panel for real-time read-only oversight.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

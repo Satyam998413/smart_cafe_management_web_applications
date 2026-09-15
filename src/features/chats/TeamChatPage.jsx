@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import ChatBubble from '@/components/ChatBubble';
 import ChatComposer from '@/components/ChatComposer';
 import { listVariants, rowVariants } from '@/components/ui/motionVariants';
@@ -57,31 +57,12 @@ export default function TeamChatPage({ apiFetch, authRole, myId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authRole]);
 
-  // Keep the conversation list (last message, unread counts) fresh while
-  // it's the visible screen — only the open-thread view polled before,
-  // so a new incoming message never showed up until you happened to open
-  // that specific thread.
   useEffect(() => {
     if (selected) return undefined;
     const id = setInterval(loadOverview, POLL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
-
-  if (selected) {
-    return (
-      <TeamThreadView
-        apiFetch={apiFetch}
-        myId={myId}
-        otherUserId={selected.id}
-        title={selected.name}
-        onBack={() => {
-          setSelected(null);
-          loadOverview();
-        }}
-      />
-    );
-  }
 
   // Merge: existing conversations (sorted by recency) first, then anyone in
   // the directory with no messages yet (sorted by name) — so a manager/cook
@@ -90,59 +71,122 @@ export default function TeamChatPage({ apiFetch, authRole, myId }) {
   const unmessaged = directory.filter((d) => !overviewIds.has(d.id)).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{authRole === 'manager' ? 'Chat with Cooks' : 'Chat with Managers'}</h2>
-      {loading ? (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading…
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageCircle size={22} color="var(--accent-primary)" /> {authRole === 'manager' ? 'Chat with Cooks' : 'Chat with Managers'}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Direct team messaging between kitchen cooks and store management.
+          </p>
         </div>
-      ) : (
-        <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
-          {overview.map((row) => {
-            const person = directory.find((d) => d.id === row.otherUserId);
-            return (
-              <motion.div
-                key={row.otherUserId}
-                className="glass-card staff-row"
-                variants={rowVariants}
-                whileHover={{ x: 2 }}
-                style={{ cursor: 'pointer' }}
-                onClick={() => setSelected({ id: row.otherUserId, name: person?.name || 'Unknown' })}
-              >
-                <div className="staff-avatar">{(person?.name || '?')[0].toUpperCase()}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>{person?.name || 'Unknown'}</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {row.lastMessage}
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {loading ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading staff roster…</div>
+        ) : (
+          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }} variants={listVariants} initial="hidden" animate="show">
+            {overview.map((row) => {
+              const person = directory.find((d) => d.id === row.otherUserId);
+              const isSelected = selected?.id === row.otherUserId;
+              return (
+                <motion.div
+                  key={row.otherUserId}
+                  className="glass-card staff-row"
+                  variants={rowVariants}
+                  whileHover={{ x: 2 }}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                    background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                  }}
+                  onClick={() => setSelected({ id: row.otherUserId, name: person?.name || 'Unknown' })}
+                >
+                  <div className="staff-avatar">{(person?.name || '?')[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{person?.name || 'Unknown'}</strong>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {row.lastMessage}
+                    </div>
                   </div>
-                </div>
-                {row.unreadCount > 0 && <span className="unread-badge">{row.unreadCount}</span>}
-              </motion.div>
-            );
-          })}
-          {unmessaged.map((person) => (
-            <motion.div
-              key={person.id}
-              className="glass-card staff-row"
-              variants={rowVariants}
-              whileHover={{ x: 2 }}
-              style={{ cursor: 'pointer' }}
-              onClick={() => setSelected({ id: person.id, name: person.name })}
-            >
-              <div className="staff-avatar">{(person.name || '?')[0].toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{person.name}</strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Say hello 👋</div>
+                  {row.unreadCount > 0 && <span className="unread-badge">{row.unreadCount}</span>}
+                </motion.div>
+              );
+            })}
+            {unmessaged.map((person) => {
+              const isSelected = selected?.id === person.id;
+              return (
+                <motion.div
+                  key={person.id}
+                  className="glass-card staff-row"
+                  variants={rowVariants}
+                  whileHover={{ x: 2 }}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                    background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                  }}
+                  onClick={() => setSelected({ id: person.id, name: person.name })}
+                >
+                  <div className="staff-avatar">{(person.name || '?')[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>{person.name}</strong>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Say hello 👋</div>
+                  </div>
+                </motion.div>
+              );
+            })}
+            {overview.length === 0 && unmessaged.length === 0 && (
+              <div className="glass-card" style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                {authRole === 'manager' ? 'No cooks on staff yet.' : 'No managers on staff yet.'}
               </div>
-            </motion.div>
-          ))}
-          {overview.length === 0 && unmessaged.length === 0 && (
-            <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              {authRole === 'manager' ? 'No cooks on staff yet.' : 'No managers on staff yet.'}
-            </div>
-          )}
-        </motion.div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </div>
+
+      {/* Main Right Content Panel (Team Chat Stream) */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selected ? (
+          <TeamThreadView
+            apiFetch={apiFetch}
+            myId={myId}
+            otherUserId={selected.id}
+            title={selected.name}
+            onBack={() => {
+              setSelected(null);
+              loadOverview();
+            }}
+          />
+        ) : (
+          <div className="glass-card" style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <MessageCircle size={36} strokeWidth={1.5} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Select a Team Member</h3>
+            <p style={{ fontSize: '0.85rem', maxWidth: 380 }}>Choose a team member from the left sidebar roster to start messaging.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -120,89 +120,131 @@ export default function MenuPage({ menu, loading, setMenu, authRole, apiFetch, c
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '220px', maxWidth: '400px' }}>
-          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            type="text"
-            className="field-input"
-            placeholder="Search menu items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ borderRadius: 'var(--radius-full)', paddingLeft: '2.4rem' }}
-          />
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <UtensilsCrossed size={22} color="var(--accent-primary)" /> Menu Catalog
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Explore dishes, beverages, categories & customization options.
+          </p>
         </div>
-        {authRole === 'manager' && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setModalMode('add');
-              setEditingItem(null);
-              setShowModal(true);
-            }}
-          >
-            <Plus size={16} /> Add Menu Item
-          </Button>
-        )}
-        {authRole === 'customer' && (
-          <button type="button" className="icon-btn" onClick={onOpenCart} title="View cart" style={{ position: 'relative', width: 44, height: 44 }}>
-            <ShoppingCart size={18} />
-            <AnimatePresence>
-              {cartApi.cartItemCount > 0 && (
-                <motion.span
-                  key={cartApi.cartItemCount}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                  className="nav-badge"
-                  style={{ position: 'absolute', top: -4, right: -4, marginLeft: 0 }}
-                >
-                  {cartApi.cartItemCount}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-        )}
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Primary Actions */}
+        <div>
+          {authRole === 'manager' && (
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => {
+                setModalMode('add');
+                setEditingItem(null);
+                setShowModal(true);
+              }}
+            >
+              <Plus size={16} /> Add Menu Item
+            </Button>
+          )}
+          {authRole === 'customer' && (
+            <Button variant="primary" fullWidth onClick={onOpenCart}>
+              <ShoppingCart size={16} /> View Cart ({cartApi.cartItems?.length || 0})
+            </Button>
+          )}
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Search & Category Filters */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.1rem', color: 'var(--text-secondary)', display: 'block' }}>
+            Search & Categories
+          </label>
+
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="field-input"
+              style={{ paddingLeft: '2.2rem', height: '2.2rem', fontSize: '0.82rem', width: '100%' }}
+              placeholder="Search dishes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`chip ${categoryFilter === cat ? 'active' : ''}`}
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem', textTransform: 'capitalize' }}
+                onClick={() => setCategoryFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Catalog Summary Badge */}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div>Total Menu Items: <strong>{menu.length}</strong></div>
+          <div>Available Items: <strong>{menu.filter((m) => m.isAvailable).length}</strong></div>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {CATEGORIES.map((cat) => (
-          <button key={cat} className={`chip ${categoryFilter === cat ? 'active' : ''}`} onClick={() => setCategoryFilter(cat)}>
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <SkeletonGrid count={8} gridClassName="menu-grid" />
-      ) : (
-        <motion.div className="menu-grid" variants={gridVariants} initial="hidden" animate="show">
-          {filteredMenu.map((item) => {
-            const cartQuantity =
-              authRole === 'customer'
-                ? (cartApi?.cart || []).filter((c) => c.item._id === item._id).reduce((sum, c) => sum + c.quantity, 0)
-                : 0;
-            return (
-              <motion.div key={item._id} variants={cardVariants} layout>
+      {/* Main Right Content Panel (Menu Grid) */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {loading ? (
+          <SkeletonGrid count={6} gridClassName="menu-grid" />
+        ) : (
+          <motion.div className="menu-grid" variants={gridVariants} initial="hidden" animate="show">
+            {filteredMenu.length === 0 ? (
+              <div className="glass-card" style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+                No menu items found.
+              </div>
+            ) : (
+              filteredMenu.map((item) => (
                 <MenuCard
+                  key={item._id}
                   item={item}
                   authRole={authRole}
-                  onEdit={(it) => {
+                  onEdit={() => {
                     setModalMode('edit');
-                    setEditingItem(it);
+                    setEditingItem(item);
                     setShowModal(true);
                   }}
-                  onToggleAvailability={toggleItemAvailability}
-                  onSelect={setSelectedItem}
-                  cartQuantity={cartQuantity}
+                  onToggleAvailability={() => toggleItemAvailability(item)}
+                  onSelect={() => setSelectedItem(item)}
+                  cartQuantity={cartApi.getCartQuantity(item._id)}
+                  onAddToCart={(item, qty) => cartApi.addToCart(item, qty)}
                 />
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
+              ))
+            )}
+          </motion.div>
+        )}
+      </div>
 
       {showModal && authRole === 'manager' && (
         <MenuItemModal

@@ -3,13 +3,49 @@
 import { useEffect, useRef, useState } from 'react';
 import { DragDropProvider, useDraggable } from '@dnd-kit/react';
 import { RestrictToElement } from '@dnd-kit/dom/modifiers';
-import { Cpu, Lightbulb, Fan, Snowflake, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Save, Lock, Check } from 'lucide-react';
+import {
+  Cpu,
+  Lightbulb,
+  Fan,
+  Snowflake,
+  Tv,
+  Flame,
+  Zap,
+  Volume2,
+  Video,
+  Plug,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Save,
+  Lock,
+  Check,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Power
+} from 'lucide-react';
 import { isOnOffCapability } from '@/lib/iot/deviceCommands.js';
 import { jsonBody } from '@/lib/apiClient.js';
 import Button from '@/components/ui/Button';
 
-const TYPE_ICONS = { lamp: Lightbulb, fan: Fan, ac: Snowflake, other: Cpu };
-const getTypeIcon = (type) => TYPE_ICONS[type] || Cpu;
+export const EQUIPMENT_CATALOG = {
+  tv: { label: 'Smart TV', icon: Tv, emoji: '📺' },
+  geyser: { label: 'Water Heater / Geyser', icon: Flame, emoji: '♨️' },
+  light: { label: 'Smart Light / Lamp', icon: Lightbulb, emoji: '💡' },
+  lamp: { label: 'Bedside Lamp', icon: Lightbulb, emoji: '💡' },
+  fan: { label: 'Ceiling Fan', icon: Fan, emoji: '🌀' },
+  ac: { label: 'Air Conditioner', icon: Snowflake, emoji: '❄️' },
+  mcb: { label: 'Main MCB Power Switch', icon: Zap, emoji: '⚡' },
+  speaker: { label: 'Audio Speaker', icon: Volume2, emoji: '🔊' },
+  camera: { label: 'CCTV Camera', icon: Video, emoji: '📹' },
+  plug: { label: 'Smart Plug / Socket', icon: Plug, emoji: '🔌' },
+  other: { label: 'Generic IoT Device', icon: Cpu, emoji: '📟' }
+};
+
+export const getTypeIcon = (type) => EQUIPMENT_CATALOG[type]?.icon || Cpu;
+export const getTypeEmoji = (type) => EQUIPMENT_CATALOG[type]?.emoji || '📟';
 const clamp = (value) => Math.min(100, Math.max(0, value));
 const NUDGE_STEP = 2; // percent per button press
 
@@ -21,6 +57,7 @@ export default function SpaceLayoutCanvas({
   spaceId,
   apiFetch,
   onDeviceMoved,
+  onDeviceStateChanged,
   authRole = 'owner',
   childSpaces = [],
   pendingTableIds = new Set(),
@@ -38,6 +75,7 @@ export default function SpaceLayoutCanvas({
   const [savingPositions, setSavingPositions] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [viewMode, setViewMode] = useState('2d'); // '2d' | '3d_isometric'
+  const [zoomScale, setZoomScale] = useState(1); // 0.5 to 2.0 zoom
 
   useEffect(() => {
     setPositions(Object.fromEntries(devices.map((d) => [d.id, { posX: d.posX, posY: d.posY }])));
@@ -47,6 +85,28 @@ export default function SpaceLayoutCanvas({
     if (initialLength) setDimLength(initialLength);
     if (initialWidth) setDimWidth(initialWidth);
   }, [initialLength, initialWidth]);
+
+  const toggleDeviceState = async (device) => {
+    if (!apiFetch) return;
+    const onOffCap = device.capabilities?.find(isOnOffCapability) || 'on_off';
+    const currentState = Boolean(device.state?.[onOffCap]);
+    const nextState = !currentState;
+
+    onDeviceStateChanged?.(device.id, onOffCap, nextState);
+
+    try {
+      const res = await apiFetch(`/iot-devices/${device.id}/commands`, {
+        method: 'POST',
+        ...jsonBody({ capability: onOffCap, value: nextState })
+      });
+      if (!res.ok) {
+        onDeviceStateChanged?.(device.id, onOffCap, currentState);
+      }
+    } catch (e) {
+      console.error('Failed to toggle device state:', e);
+      onDeviceStateChanged?.(device.id, onOffCap, currentState);
+    }
+  };
 
   const placed = devices.filter((d) => positions[d.id]?.posX != null && positions[d.id]?.posY != null);
   const unplaced = devices.filter((d) => positions[d.id]?.posX == null || positions[d.id]?.posY == null);
@@ -190,48 +250,96 @@ export default function SpaceLayoutCanvas({
             {isEditable ? 'Owner / Master Admin Layout Controls Active' : '👁️ View Only'}
           </span>
 
-          {/* 2D / 3D Isometric Mode Selector */}
-          <div
-            style={{
-              display: 'inline-flex',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-              background: 'var(--bg-surface)'
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode('2d')}
+          {/* 2D / 3D Isometric Mode & Zoom Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div
               style={{
-                padding: '0.3rem 0.75rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                border: 'none',
-                background: viewMode === '2d' ? 'var(--accent-primary)' : 'transparent',
-                color: viewMode === '2d' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                display: 'inline-flex',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                background: 'var(--bg-surface)'
               }}
             >
-              📐 2D Layout
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('3d_isometric')}
+              <button
+                type="button"
+                onClick={() => setViewMode('2d')}
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  background: viewMode === '2d' ? 'var(--accent-primary)' : 'transparent',
+                  color: viewMode === '2d' ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                📐 2D Layout
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('3d_isometric')}
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  background: viewMode === '3d_isometric' ? 'var(--accent-primary)' : 'transparent',
+                  color: viewMode === '3d_isometric' ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                🧊 3D Isometric
+              </button>
+            </div>
+
+            {/* Figma-style Canvas Zoom Bar */}
+            <div
               style={{
-                padding: '0.3rem 0.75rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                border: 'none',
-                background: viewMode === '3d_isometric' ? 'var(--accent-primary)' : 'transparent',
-                color: viewMode === '3d_isometric' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                background: 'var(--bg-surface)',
+                padding: '0.2rem 0.5rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)'
               }}
             >
-              🧊 3D Isometric
-            </button>
+              <button
+                type="button"
+                className="icon-btn"
+                style={{ width: 22, height: 22 }}
+                onClick={() => setZoomScale((z) => Math.max(0.5, Math.round((z - 0.15) * 100) / 100))}
+                title="Zoom Out (-15%)"
+              >
+                <ZoomOut size={13} />
+              </button>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, minWidth: 42, textAlign: 'center' }}>
+                {Math.round(zoomScale * 100)}%
+              </span>
+              <button
+                type="button"
+                className="icon-btn"
+                style={{ width: 22, height: 22 }}
+                onClick={() => setZoomScale((z) => Math.min(2.0, Math.round((z + 0.15) * 100) / 100))}
+                title="Zoom In (+15%)"
+              >
+                <ZoomIn size={13} />
+              </button>
+              {zoomScale !== 1 && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ width: 22, height: 22 }}
+                  onClick={() => setZoomScale(1)}
+                  title="Reset Zoom (100%)"
+                >
+                  <Maximize2 size={13} />
+                </button>
+              )}
+            </div>
           </div>
 
           {saveMessage && (
@@ -473,6 +581,7 @@ export default function SpaceLayoutCanvas({
                 selected={selectedId === device.id}
                 onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
                 onNudge={(dx, dy) => handleNudge(device.id, dx, dy)}
+                onToggleState={toggleDeviceState}
               />
             </div>
           ))}
@@ -482,7 +591,7 @@ export default function SpaceLayoutCanvas({
       {placed.length > 0 && (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.6rem', textAlign: 'center' }}>
           {isEditable
-            ? 'Drag any equipment icon to reposition, or select one to use Up/Down/Left/Right nudge buttons. Click "Set Positions" to save.'
+            ? '💡 Click any equipment icon to toggle ON/OFF. Drag icons to reposition, or use Nudge buttons. Click "Set Positions" to save.'
             : 'View Only Mode — Equipment positions are fixed and managed by Owners & Master Admins.'}
         </p>
       )}
@@ -490,7 +599,7 @@ export default function SpaceLayoutCanvas({
   );
 }
 
-function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onNudge }) {
+function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onNudge, onToggleState }) {
   const { ref } = useDraggable({
     id: device.id,
     disabled: !isEditable,
@@ -498,10 +607,12 @@ function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onN
   });
 
   const TypeIcon = getTypeIcon(device.type);
-  const onOffCapability = device.capabilities.find(isOnOffCapability);
+  const emoji = getTypeEmoji(device.type);
+  const onOffCapability = device.capabilities?.find(isOnOffCapability);
   const isOn = onOffCapability ? Boolean(device.state?.[onOffCapability]) : null;
-  const color = isOn === null ? 'var(--text-muted)' : isOn ? '#059669' : '#dc2626';
-  const background = isOn === null ? 'var(--bg-surface)' : isOn ? 'rgba(5, 150, 105, 0.14)' : 'rgba(220, 38, 38, 0.14)';
+  const color = isOn === null ? 'var(--text-muted)' : isOn ? '#10b981' : '#ef4444';
+  const background = isOn === null ? 'var(--bg-surface)' : isOn ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+  const glow = isOn ? '0 0 14px #10b981, 0 0 24px rgba(16, 185, 129, 0.4)' : '0 0 8px rgba(239, 68, 68, 0.3)';
 
   return (
     <div
@@ -509,15 +620,18 @@ function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onN
       onClick={(e) => {
         e.stopPropagation();
         onSelect?.(device.id);
+        if (onOffCapability && onToggleState) {
+          onToggleState(device);
+        }
       }}
-      title={`${device.name} (${device.deviceCode})`}
+      title={`${device.name} (${device.deviceCode}) — Click to toggle ON/OFF!`}
       style={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '0.25rem',
-        cursor: isEditable ? 'grab' : 'default',
+        cursor: 'pointer',
         touchAction: 'none',
         userSelect: 'none'
       }}
@@ -527,15 +641,17 @@ function DeviceIcon({ device, isEditable = true, selected = false, onSelect, onN
         style={{
           color,
           background,
-          border: '2px solid currentColor',
-          boxShadow: 'var(--shadow-xs)',
+          border: `2px solid ${color}`,
+          boxShadow: glow,
           outline: selected && isEditable ? '2px solid var(--accent-primary)' : 'none',
-          outlineOffset: 2
+          outlineOffset: 2,
+          position: 'relative'
         }}
       >
         <TypeIcon size={18} />
+        <span style={{ position: 'absolute', bottom: -4, right: -4, fontSize: '0.65rem' }}>{emoji}</span>
       </div>
-      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#ffffff', background: 'rgba(0,0,0,0.6)', padding: '0.1rem 0.3rem', borderRadius: 4, whiteSpace: 'nowrap' }}>
         {device.deviceCode}
       </span>
 

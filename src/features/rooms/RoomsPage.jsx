@@ -278,165 +278,223 @@ export default function RoomsPage({ apiFetch, authRole }) {
     }
   };
 
+  const totalAvgRate = rooms.length > 0
+    ? (rooms.reduce((sum, r) => sum + Number(r.pricePerNight || 0), 0) / rooms.length).toFixed(2)
+    : '0.00';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', alignItems: 'flex-start' }}>
+      {/* 320px Sticky Left Control Panel */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Rooms</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>Hotel room inventory, rates, and photos.</p>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>Rooms Inventory</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            Hotel room inventory, rates, and photo management.
+          </p>
         </div>
+
+        {/* Site Picker */}
         {!sitesLoading && !sitesError && sites.length > 0 && isHotel && (
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <select className="field-input" style={{ width: 'auto', minWidth: 200 }} value={selectedSiteId} onChange={(e) => setSelectedSiteId(e.target.value)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Select Site
+            </label>
+            <select className="field-input" value={selectedSiteId} onChange={(e) => setSelectedSiteId(e.target.value)}>
               {sites.map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name}
                 </option>
               ))}
             </select>
-            {isOwner && (
-              <button className="btn-orange" onClick={openAdd}>
-                <Plus size={16} /> + Add Room
-              </button>
-            )}
+          </div>
+        )}
+
+        {/* Action Button */}
+        {isOwner && isHotel && sites.length > 0 && (
+          <button className="btn-orange" onClick={openAdd} style={{ width: '100%', justifyContent: 'center' }}>
+            <Plus size={16} /> Add Room
+          </button>
+        )}
+
+        {/* Stats Summary */}
+        {isHotel && (
+          <div
+            style={{
+              padding: '1rem',
+              background: 'var(--bg-surface-elevated)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem'
+            }}
+          >
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Inventory Overview
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Rooms</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{rooms.length}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Average Nightly Rate</span>
+              <span style={{ fontWeight: 700, color: 'var(--accent-secondary)' }}>${totalAvgRate}</span>
+            </div>
           </div>
         )}
       </div>
 
-      {orgLoading ? (
-        <Skeleton height="2.5rem" width={220} />
-      ) : orgError ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{orgError}</span>
-          <Button variant="secondary" onClick={loadOrg}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : !isHotel ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <BedDouble size={28} strokeWidth={1.5} />
-          Room management is only available for hotel organizations.
-        </div>
-      ) : sitesLoading ? (
-        <div className="menu-grid">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <Skeleton height="9rem" />
-              <Skeleton width="60%" height="1rem" />
-              <Skeleton width="40%" height="0.85rem" />
-            </div>
-          ))}
-        </div>
-      ) : sitesError ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{sitesError}</span>
-          <Button variant="secondary" onClick={loadSites}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : sites.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <BedDouble size={28} strokeWidth={1.5} />
-          Add a site first — rooms need one to attach to.
-        </div>
-      ) : roomsLoading ? (
-        <div className="menu-grid">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <Skeleton height="9rem" />
-              <Skeleton width="60%" height="1rem" />
-              <Skeleton width="40%" height="0.85rem" />
-            </div>
-          ))}
-        </div>
-      ) : roomsError ? (
-        <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--status-cancelled)' }}>{roomsError}</span>
-          <Button variant="secondary" onClick={() => loadRooms(selectedSiteId)}>
-            <RotateCcw size={15} /> Retry
-          </Button>
-        </div>
-      ) : rooms.length === 0 ? (
-        <div
-          className="glass-card"
-          style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
-        >
-          <BedDouble size={28} strokeWidth={1.5} />
-          No rooms yet.
-          {isOwner && (
-            <Button variant="primary" size="sm" onClick={openAdd}>
-              Add your first room
+      {/* Right Main Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {orgLoading ? (
+          <Skeleton height="2.5rem" width={220} />
+        ) : orgError ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{orgError}</span>
+            <Button variant="secondary" onClick={loadOrg}>
+              <RotateCcw size={15} /> Retry
             </Button>
-          )}
-        </div>
-      ) : (
-        <motion.div className="menu-grid" variants={listVariants} initial="hidden" animate="show">
-          {rooms.map((room) => {
-            const cover = room.images && room.images.length > 0 ? room.images[0] : null;
-            return (
-              <motion.div key={room.id} className="glass-card" variants={rowVariants} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ position: 'relative', width: '100%', height: 160, background: 'var(--bg-surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cover.imageUrl} alt={room.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <BedDouble size={32} strokeWidth={1.5} color="var(--text-muted)" />
-                  )}
-                  {room.images && room.images.length > 1 && (
-                    <span className="nav-badge" style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
-                      +{room.images.length - 1}
-                    </span>
-                  )}
-                </div>
-                <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>
-                    {room.label}
-                    {room.number ? ` · ${room.number}` : ''}
-                  </strong>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>{room.description || 'No description yet.'}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--accent-secondary)' }}>
-                      {room.pricePerNight != null ? `$${Number(room.pricePerNight).toFixed(2)}/night` : 'No rate set'}
-                    </span>
-                    {room.maxOccupancy != null && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        <Users2 size={14} /> {room.maxOccupancy}
+          </div>
+        ) : !isHotel ? (
+          <div
+            className="glass-card"
+            style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <BedDouble size={28} strokeWidth={1.5} />
+            Room management is only available for hotel organizations.
+          </div>
+        ) : sitesLoading ? (
+          <div className="menu-grid">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <Skeleton height="9rem" />
+                <Skeleton width="60%" height="1rem" />
+                <Skeleton width="40%" height="0.85rem" />
+              </div>
+            ))}
+          </div>
+        ) : sitesError ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{sitesError}</span>
+            <Button variant="secondary" onClick={loadSites}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : sites.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <BedDouble size={28} strokeWidth={1.5} />
+            Add a site first — rooms need one to attach to.
+          </div>
+        ) : roomsLoading ? (
+          <div className="menu-grid">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <Skeleton height="9rem" />
+                <Skeleton width="60%" height="1rem" />
+                <Skeleton width="40%" height="0.85rem" />
+              </div>
+            ))}
+          </div>
+        ) : roomsError ? (
+          <div className="glass-card" style={{ padding: '2.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ color: 'var(--status-cancelled)' }}>{roomsError}</span>
+            <Button variant="secondary" onClick={() => loadRooms(selectedSiteId)}>
+              <RotateCcw size={15} /> Retry
+            </Button>
+          </div>
+        ) : rooms.length === 0 ? (
+          <div
+            className="glass-card"
+            style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.9rem' }}
+          >
+            <BedDouble size={28} strokeWidth={1.5} />
+            No rooms yet.
+            {isOwner && (
+              <Button variant="primary" size="sm" onClick={openAdd}>
+                Add your first room
+              </Button>
+            )}
+          </div>
+        ) : (
+          <motion.div className="menu-grid" variants={listVariants} initial="hidden" animate="show">
+            {rooms.map((room) => {
+              const cover = room.images && room.images.length > 0 ? room.images[0] : null;
+              return (
+                <motion.div key={room.id} className="glass-card" variants={rowVariants} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ position: 'relative', width: '100%', height: 160, background: 'var(--bg-surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover.imageUrl} alt={room.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <BedDouble size={32} strokeWidth={1.5} color="var(--text-muted)" />
+                    )}
+                    {room.images && room.images.length > 1 && (
+                      <span className="nav-badge" style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+                        +{room.images.length - 1}
                       </span>
                     )}
                   </div>
-                  {isOwner && (
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <button className="icon-btn" onClick={() => openPhotos(room)} aria-label={`Manage photos for ${room.label}`} title="Manage photos">
-                        <ImagePlus size={15} />
-                      </button>
-                      <button className="icon-btn" onClick={() => openEdit(room)} aria-label={`Edit ${room.label}`} title="Edit room">
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        className="icon-btn"
-                        onClick={() => {
-                          setDeleteError('');
-                          setDeleteTarget(room);
-                        }}
-                        aria-label={`Delete ${room.label}`}
-                        title="Delete room"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                  <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {room.label}
+                      {room.number ? ` · ${room.number}` : ''}
+                    </strong>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>{room.description || 'No description yet.'}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--accent-secondary)' }}>
+                        {room.pricePerNight != null ? `$${Number(room.pricePerNight).toFixed(2)}/night` : 'No rate set'}
+                      </span>
+                      {room.maxOccupancy != null && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                          <Users2 size={14} /> {room.maxOccupancy}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
+                    {isOwner && (
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <button className="icon-btn" onClick={() => openPhotos(room)} aria-label={`Manage photos for ${room.label}`} title="Manage photos">
+                          <ImagePlus size={15} />
+                        </button>
+                        <button className="icon-btn" onClick={() => openEdit(room)} aria-label={`Edit ${room.label}`} title="Edit room">
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          className="icon-btn"
+                          onClick={() => {
+                            setDeleteError('');
+                            setDeleteTarget(room);
+                          }}
+                          aria-label={`Delete ${room.label}`}
+                          title="Delete room"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
 
       {showForm && (
         <Modal onClose={() => setShowForm(false)} maxWidth={460}>

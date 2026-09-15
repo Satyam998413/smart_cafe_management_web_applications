@@ -31,7 +31,9 @@ import Button from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { listVariants, rowVariants } from '@/components/ui/motionVariants';
 import { buildSpaceTree, flattenSpaceTree, spaceLabel, SPACE_KIND_LABELS, TOP_LEVEL_KINDS, CHILD_KINDS } from '@/lib/spaceTree.js';
-import SpaceLayoutCanvas from '@/features/iot/SpaceLayoutCanvas';
+import SpaceLayoutCanvas, { EQUIPMENT_CATALOG, getTypeEmoji } from '@/features/iot/SpaceLayoutCanvas';
+import { isOnOffCapability } from '@/lib/iot/deviceCommands.js';
+import { Cpu } from 'lucide-react';
 
 // Default multi-floor fallback structure when site spaces are initializing
 const DEFAULT_FLOORS = [
@@ -163,6 +165,104 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [busyId, setBusyId] = useState(null);
+
+  // IoT Equipment Creation Form State
+  const [showDeviceForm, setShowDeviceForm] = useState(false);
+  const [deviceTargetSpace, setDeviceTargetSpace] = useState(null);
+  const [deviceForm, setDeviceForm] = useState({ name: '', type: 'light', quantity: 1 });
+  const [deviceFormError, setDeviceFormError] = useState('');
+  const [savingDevice, setSavingDevice] = useState(false);
+
+  const openAddDevice = (space) => {
+    setDeviceTargetSpace(space);
+    setDeviceForm({ name: `${space.label} Light`, type: 'light', quantity: 1 });
+    setDeviceFormError('');
+    setShowDeviceForm(true);
+  };
+
+  const handleDeviceSubmit = async (e) => {
+    e.preventDefault();
+    setDeviceFormError('');
+    if (!deviceForm.name.trim()) {
+      setDeviceFormError('Equipment / Device name is required.');
+      return;
+    }
+    setSavingDevice(true);
+    try {
+      const res = await apiFetch('/iot-devices', {
+        method: 'POST',
+        ...jsonBody({
+          spaceId: deviceTargetSpace.id,
+          name: deviceForm.name.trim(),
+          type: deviceForm.type,
+          capabilities: ['on_off'],
+          quantity: Number(deviceForm.quantity) || 1
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeviceFormError(data.message || 'Failed to register equipment.');
+        return;
+      }
+      await loadDevices();
+      setShowDeviceForm(false);
+    } catch (err) {
+      console.error('Failed to create device:', err);
+      setDeviceFormError('Network error — please try again.');
+    } finally {
+      setSavingDevice(false);
+    }
+  };
+
+  const toggleDeviceStateInTree = async (device) => {
+    const onOffCap = device.capabilities?.find(isOnOffCapability) || 'on_off';
+    const currentState = Boolean(device.state?.[onOffCap]);
+    const nextState = !currentState;
+
+    setDevices((prev) =>
+      prev.map((d) => (d.id === device.id ? { ...d, state: { ...d.state, [onOffCap]: nextState } } : d))
+    );
+
+    try {
+      const res = await apiFetch(`/iot-devices/${device.id}/commands`, {
+        method: 'POST',
+        ...jsonBody({ capability: onOffCap, value: nextState })
+      });
+      if (!res.ok) {
+        setDevices((prev) =>
+          prev.map((d) => (d.id === device.id ? { ...d, state: { ...d.state, [onOffCap]: currentState } } : d))
+        );
+      }
+    } catch (e) {
+      console.error('Failed to toggle device in tree:', e);
+      setDevices((prev) =>
+        prev.map((d) => (d.id === device.id ? { ...d, state: { ...d.state, [onOffCap]: currentState } } : d))
+      );
+    }
+  };
+
+  const ensureMainMcbExists = async (targetSpace) => {
+    if (!targetSpace?.id) return;
+    const spaceDevices = devices.filter((d) => d.spaceId === targetSpace.id);
+    const hasMcb = spaceDevices.some((d) => d.type === 'mcb' || d.name?.toLowerCase().includes('mcb'));
+    if (!hasMcb) {
+      try {
+        await apiFetch('/iot-devices', {
+          method: 'POST',
+          ...jsonBody({
+            spaceId: targetSpace.id,
+            name: `${targetSpace.label} Main MCB Breaker`,
+            type: 'mcb',
+            capabilities: ['on_off'],
+            quantity: 1
+          })
+        });
+        await loadDevices();
+      } catch (err) {
+        console.error('Failed to auto-create MCB switch:', err);
+      }
+    }
+  };
 
   const loadSites = async () => {
     setSitesLoading(true);
@@ -331,7 +431,16 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
       else defaultKind = 'canteen';
     }
 
-    setForm({ kind: defaultKind, label: '', number: '', isBookable: false, iotEnabled: false, length: '', width: '' });
+    setForm({
+      kind: defaultKind,
+      labelPrefix: defaultKind === 'floor' ? 'Floor' : defaultKind === 'room' ? 'Room' : defaultKind === 'table' ? 'Table' : 'Corridor',
+      startNumber: defaultKind === 'room' ? '101' : defaultKind === 'table' ? '101' : '1',
+      quantity: 1,
+      isBookable: false,
+      iotEnabled: false,
+      length: '',
+      width: ''
+    });
     setFormError('');
     setShowForm(true);
   };
@@ -342,8 +451,9 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
     setParentSpaceId(space.parentSpaceId);
     setForm({
       kind: space.kind,
-      label: space.label,
-      number: space.number || '',
+      labelPrefix: space.label || '',
+      startNumber: space.number || '',
+      quantity: 1,
       isBookable: !!space.isBookable,
       iotEnabled: !!space.iotEnabled,
       length: space.length ?? '',
@@ -356,41 +466,60 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!form.label.trim()) {
-      setFormError('Label is required.');
+    if (!form.labelPrefix.trim()) {
+      setFormError('Label / Alias prefix is required.');
       return;
     }
     setSaving(true);
     try {
       if (formMode === 'add') {
-        const siblingCount = spaces.filter((s) => (s.parentSpaceId || null) === parentSpaceId).length;
-        const res = await apiFetch('/spaces', {
-          method: 'POST',
-          ...jsonBody({
-            siteId: selectedSiteId,
-            parentSpaceId: parentSpaceId || undefined,
-            kind: form.kind,
-            label: form.label,
-            number: form.number || undefined,
-            isBookable: form.kind === 'room' ? form.isBookable : false,
-            iotEnabled: form.iotEnabled,
-            sortOrder: siblingCount,
-            length: form.length === '' ? undefined : Number(form.length),
-            width: form.width === '' ? undefined : Number(form.width)
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setFormError(data.message || 'Failed to add.');
-          return;
+        const qty = Math.min(50, Math.max(1, Number(form.quantity) || 1));
+        const startNum = Number(form.startNumber);
+        const hasStartNum = !isNaN(startNum) && form.startNumber !== '';
+        const prefix = form.labelPrefix.trim();
+
+        const createdList = [];
+        let initialSiblingCount = spaces.filter((s) => (s.parentSpaceId || null) === parentSpaceId).length;
+
+        for (let i = 0; i < qty; i++) {
+          const numStr = hasStartNum ? String(startNum + i) : (form.startNumber ? form.startNumber : '');
+          const itemLabel = hasStartNum
+            ? `${prefix} ${startNum + i}`
+            : (qty > 1 ? `${prefix} #${i + 1}` : prefix);
+
+          const res = await apiFetch('/spaces', {
+            method: 'POST',
+            ...jsonBody({
+              siteId: selectedSiteId,
+              parentSpaceId: parentSpaceId || undefined,
+              kind: form.kind,
+              label: itemLabel,
+              number: numStr || undefined,
+              isBookable: form.kind === 'room' ? form.isBookable : false,
+              iotEnabled: form.iotEnabled,
+              sortOrder: initialSiblingCount + i,
+              length: form.length === '' ? undefined : Number(form.length),
+              width: form.width === '' ? undefined : Number(form.width)
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setFormError(data.message || `Failed to add ${itemLabel}.`);
+            setSaving(false);
+            return;
+          }
+          createdList.push(data);
+          if (data.iotEnabled) {
+            ensureMainMcbExists(data);
+          }
         }
-        setSpaces((prev) => [...prev, data]);
+        setSpaces((prev) => [...prev, ...createdList]);
       } else {
         const res = await apiFetch(`/spaces/${editingId}`, {
           method: 'PATCH',
           ...jsonBody({
-            label: form.label,
-            number: form.number || null,
+            label: form.labelPrefix.trim(),
+            number: form.startNumber || null,
             isBookable: form.kind === 'room' ? form.isBookable : false,
             iotEnabled: form.iotEnabled,
             length: form.length === '' ? null : Number(form.length),
@@ -403,6 +532,9 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
           return;
         }
         setSpaces((prev) => prev.map((s) => (s.id === data.id ? data : s)));
+        if (data.iotEnabled) {
+          ensureMainMcbExists(data);
+        }
       }
       setShowForm(false);
     } catch (e) {
@@ -415,10 +547,16 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
 
   const toggleIot = async (space) => {
     setBusyId(space.id);
+    const nextState = !space.iotEnabled;
     try {
-      const res = await apiFetch(`/spaces/${space.id}`, { method: 'PATCH', ...jsonBody({ iotEnabled: !space.iotEnabled }) });
+      const res = await apiFetch(`/spaces/${space.id}`, { method: 'PATCH', ...jsonBody({ iotEnabled: nextState }) });
       const data = await res.json();
-      if (res.ok) setSpaces((prev) => prev.map((s) => (s.id === data.id ? data : s)));
+      if (res.ok) {
+        setSpaces((prev) => prev.map((s) => (s.id === data.id ? data : s)));
+        if (nextState) {
+          ensureMainMcbExists(data);
+        }
+      }
     } catch (e) {
       console.error('Failed to toggle IoT:', e);
     } finally {
@@ -534,27 +672,47 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
   }, [displayFloors, focusedSpaceId, searchQuery, kindFilter, statusFilter, pendingTableIds]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header & Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', gap: '1.5rem', width: '100%', maxWidth: 1400, margin: '0 auto', alignItems: 'flex-start' }}>
+      {/* Left Sidebar Control Panel (320px Sticky) */}
+      <div
+        className="glass-card"
+        style={{
+          width: 320,
+          flexShrink: 0,
+          position: 'sticky',
+          top: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto'
+        }}
+      >
+        {/* Page Title & Header */}
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Layers size={22} color="var(--accent-primary)" /> Cremen Smart Spaces — Floor Layout Manager
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Layers size={22} color="var(--accent-primary)" /> Cremen Smart Spaces
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '0.2rem' }}>
-            Multi-floor spatial plan displaying all floors, rooms, cafes, corridors, tables, red/green status badges, & pickup station.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            Multi-floor spatial plan displaying floors, rooms, cafes, corridors, tables & IoT devices.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {focusedSpaceId && (
-            <Button variant="secondary" size="sm" onClick={() => setFocusedSpaceId(null)}>
-              <RotateCcw size={14} /> ↺ Reset View (Show All Floors)
-            </Button>
-          )}
+        <div style={{ height: '1px', background: 'var(--border)' }} />
 
+        {/* Site Selector */}
+        <div>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-secondary)', display: 'block' }}>
+            Active Site
+          </label>
           {!sitesLoading && !sitesError && sites.length > 0 && (
-            <select className="field-input" style={{ width: 'auto', minWidth: 220 }} value={selectedSiteId} onChange={(e) => setSelectedSiteId(e.target.value)}>
+            <select
+              className="field-input"
+              style={{ width: '100%', fontSize: '0.85rem' }}
+              value={selectedSiteId}
+              onChange={(e) => setSelectedSiteId(e.target.value)}
+            >
               {sites.map((site) => (
                 <option key={site.id} value={site.id}>
                   🏢 {site.name}
@@ -563,40 +721,49 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
             </select>
           )}
         </div>
-      </div>
 
-      {/* View Mode Tabs & Multi-Param Filter Bar */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '1rem 1.25rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          {/* View Tabs */}
-          <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', padding: 4, gap: 4, border: '1px solid var(--border)' }}>
+        {/* Actions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {isOwner && (
+            <Button variant="primary" size="md" fullWidth onClick={() => openAdd(null)}>
+              <Plus size={16} /> Add Floor / Hall
+            </Button>
+          )}
+          {focusedSpaceId && (
+            <Button variant="secondary" size="sm" fullWidth onClick={() => setFocusedSpaceId(null)}>
+              <RotateCcw size={14} /> ↺ Reset View (Show All)
+            </Button>
+          )}
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* View Mode Tabs */}
+        <div>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-secondary)', display: 'block' }}>
+            View Mode
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'var(--bg-surface)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
             <button
               type="button"
               onClick={() => setActiveTab('all_canvas')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.4rem 0.85rem',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '0.8rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 border: 'none',
                 background: activeTab === 'all_canvas' ? 'var(--accent-primary)' : 'transparent',
                 color: activeTab === 'all_canvas' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
+                textAlign: 'left',
                 transition: 'all 0.2s ease'
               }}
             >
-              <Layers size={15} /> All Floors Stacked Canvas (Default)
+              <Layers size={16} /> Stacked Canvases
             </button>
             <button
               type="button"
@@ -604,56 +771,56 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.4rem 0.85rem',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '0.8rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 border: 'none',
                 background: activeTab === 'tree_hierarchy' ? 'var(--accent-primary)' : 'transparent',
                 color: activeTab === 'tree_hierarchy' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
+                textAlign: 'left',
                 transition: 'all 0.2s ease'
               }}
             >
-              <ListTree size={15} /> Structured Hierarchy Tree
+              <ListTree size={16} /> Hierarchy Tree
             </button>
-          </div>
-
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Showing <strong>{visibleFloors.length}</strong> floor(s) & total <strong>{spaces.length}</strong> spaces
           </div>
         </div>
 
-        {/* Filter Controls Row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Search & Space Type Filters */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <label className="field-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.1rem', color: 'var(--text-secondary)', display: 'block' }}>
+            Filter & Search Spaces
+          </label>
+
           {/* Search Box */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
               className="field-input"
-              style={{ paddingLeft: '2.2rem', height: '2.3rem', fontSize: '0.82rem' }}
-              placeholder="Search floors, rooms, cafe tables..."
+              style={{ paddingLeft: '2.2rem', height: '2.2rem', fontSize: '0.82rem', width: '100%' }}
+              placeholder="Search rooms, tables..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           {/* Kind Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Filter size={14} color="var(--text-muted)" />
-            <select className="field-input" style={{ width: 'auto', height: '2.3rem', fontSize: '0.82rem' }} value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
-              <option value="all">All Space Types</option>
-              <option value="floor">Floors Only</option>
-              <option value="room">Rooms Only</option>
-              <option value="table">Cafe Tables Only</option>
-              <option value="corridor">Corridors Only</option>
-            </select>
-          </div>
+          <select className="field-input" style={{ width: '100%', height: '2.2rem', fontSize: '0.82rem' }} value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+            <option value="all">All Space Types</option>
+            <option value="floor">Floors Only</option>
+            <option value="room">Rooms Only</option>
+            <option value="table">Cafe Tables Only</option>
+            <option value="corridor">Corridors Only</option>
+          </select>
 
           {/* Bill Status Filter */}
-          <select className="field-input" style={{ width: 'auto', height: '2.3rem', fontSize: '0.82rem' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select className="field-input" style={{ width: '100%', height: '2.2rem', fontSize: '0.82rem' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="all">All Bill Statuses</option>
             <option value="pending">🔴 Pending Bill Tables</option>
             <option value="clear">🟢 Clear Available Tables</option>
@@ -663,6 +830,7 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
             <Button
               variant="ghost"
               size="sm"
+              fullWidth
               onClick={() => {
                 setSearchQuery('');
                 setKindFilter('all');
@@ -673,10 +841,21 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
             </Button>
           )}
         </div>
+
+        <div style={{ height: '1px', background: 'var(--border)' }} />
+
+        {/* Metrics Badge */}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div>Showing <strong>{visibleFloors.length}</strong> floor(s)</div>
+          <div>Total <strong>{spaces.length}</strong> registered space(s)</div>
+          <div>Active kitchen orders: <strong>{activeOrdersCount}</strong></div>
+        </div>
       </div>
 
-      {/* Main Content View (All Floors Canvas View vs Structured Hierarchy Tree View) */}
-      {activeTab === 'all_canvas' ? (
+      {/* Main Right Content Panel */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Main Content View (All Floors Canvas View vs Structured Hierarchy Tree View) */}
+        {activeTab === 'all_canvas' ? (
         /* Vertically Stacked Multi-Floor Canvases */
         sitesLoading || spacesLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -800,66 +979,125 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
             const hasPendingBill = pendingTableIds.has(space.id) || pendingTableIds.has(space.number) || pendingTableIds.has(space.label);
 
             return (
-              <motion.div
-                key={space.id}
-                variants={rowVariants}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  padding: '0.6rem 0.75rem',
-                  marginLeft: `${space.depth * 1.75}rem`,
-                  borderRadius: 'var(--radius-md)',
-                  background: space.depth === 0 ? 'var(--bg-surface-elevated)' : 'transparent',
-                  borderLeft: space.depth > 0 ? '2px solid var(--border)' : 'none'
-                }}
-              >
-                <span className={`kind-badge kind-${space.kind}`}>{SPACE_KIND_LABELS[space.kind] || space.kind}</span>
-                <strong style={{ color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{spaceLabel(space)}</strong>
+              <div key={space.id}>
+                <motion.div
+                  variants={rowVariants}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    padding: '0.6rem 0.75rem',
+                    marginLeft: `${space.depth * 1.75}rem`,
+                    borderRadius: 'var(--radius-md)',
+                    background: space.depth === 0 ? 'var(--bg-surface-elevated)' : 'transparent',
+                    borderLeft: space.depth > 0 ? '2px solid var(--border)' : 'none'
+                  }}
+                >
+                  <span className={`kind-badge kind-${space.kind}`}>{SPACE_KIND_LABELS[space.kind] || space.kind}</span>
+                  <strong style={{ color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{spaceLabel(space)}</strong>
 
-                {space.kind === 'table' && (
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: 999, background: hasPendingBill ? '#ef4444' : '#10b981', color: '#ffffff' }}>
-                    {hasPendingBill ? '🔴 Pending Bill' : '🟢 Clear'}
-                  </span>
-                )}
+                  {space.kind === 'table' && (
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: 999, background: hasPendingBill ? '#ef4444' : '#10b981', color: '#ffffff' }}>
+                      {hasPendingBill ? '🔴 Pending Bill' : '🟢 Clear'}
+                    </span>
+                  )}
 
-                {space.isBookable && <BedDouble size={14} color="var(--text-muted)" title="Bookable" />}
+                  {space.isBookable && <BedDouble size={14} color="var(--text-muted)" title="Bookable" />}
 
-                {isOwner && (
-                  <button className="icon-btn" title={space.iotEnabled ? 'IoT enabled' : 'IoT disabled'} disabled={busy} onClick={() => toggleIot(space)}>
-                    {space.iotEnabled ? <Wifi size={14} /> : <WifiOff size={14} />}
-                  </button>
-                )}
-                {isOwner && (
-                  <>
-                    <button className="icon-btn" title="Move up" disabled={busy || isFirst} onClick={() => move(space, 'up')}>
-                      <ArrowUp size={14} />
+                  {isOwner && (
+                    <button className="icon-btn" title={space.iotEnabled ? 'IoT enabled' : 'IoT disabled'} disabled={busy} onClick={() => toggleIot(space)}>
+                      {space.iotEnabled ? <Wifi size={14} /> : <WifiOff size={14} />}
                     </button>
-                    <button className="icon-btn" title="Move down" disabled={busy || isLast} onClick={() => move(space, 'down')}>
-                      <ArrowDown size={14} />
-                    </button>
-                    {(space.kind === 'floor' || space.kind === 'canteen' || space.kind === 'hall' || space.depth <= 1) && (
-                      <button className="icon-btn" title={`Add sub-item under ${space.label}`} onClick={() => openAdd(space)}>
-                        <Plus size={14} />
+                  )}
+                  {isOwner && (
+                    <>
+                      <button
+                        className="icon-btn"
+                        title={`Add Equipment / IoT Device in ${space.label}`}
+                        onClick={() => openAddDevice(space)}
+                      >
+                        <Cpu size={14} color="var(--accent-primary)" />
                       </button>
-                    )}
-                    <button className="icon-btn" title="Edit" onClick={() => openEdit(space)}>
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      className="icon-btn"
-                      title={hasChildren(space.id) ? 'Delete children first' : 'Delete'}
-                      disabled={hasChildren(space.id)}
-                      onClick={() => {
-                        setDeleteError('');
-                        setDeleteTarget(space);
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-              </motion.div>
+                      <button className="icon-btn" title="Move up" disabled={busy || isFirst} onClick={() => move(space, 'up')}>
+                        <ArrowUp size={14} />
+                      </button>
+                      <button className="icon-btn" title="Move down" disabled={busy || isLast} onClick={() => move(space, 'down')}>
+                        <ArrowDown size={14} />
+                      </button>
+                      {(space.kind === 'floor' || space.kind === 'canteen' || space.kind === 'hall' || space.depth <= 1) && (
+                        <button className="icon-btn" title={`Add sub-item under ${space.label}`} onClick={() => openAdd(space)}>
+                          <Plus size={14} />
+                        </button>
+                      )}
+                      <button className="icon-btn" title="Edit" onClick={() => openEdit(space)}>
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        title={hasChildren(space.id) ? 'Delete children first' : 'Delete'}
+                        disabled={hasChildren(space.id)}
+                        onClick={() => {
+                          setDeleteError('');
+                          setDeleteTarget(space);
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </motion.div>
+
+                {/* Render Nested IoT Equipment Devices under this Space */}
+                {devices
+                  .filter((d) => d.spaceId === space.id)
+                  .map((device) => {
+                    const onOffCap = device.capabilities?.find(isOnOffCapability) || 'on_off';
+                    const isOn = Boolean(device.state?.[onOffCap]);
+                    return (
+                      <div
+                        key={device.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          padding: '0.4rem 0.75rem',
+                          marginLeft: `${(space.depth + 1) * 1.75}rem`,
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(59, 130, 246, 0.08)',
+                          borderLeft: '2px solid var(--accent-primary)',
+                          marginTop: '0.2rem'
+                        }}
+                      >
+                        <span style={{ fontSize: '0.85rem' }}>{getTypeEmoji(device.type)}</span>
+                        <strong style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{device.name}</strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>({device.deviceCode})</span>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: 999,
+                            background: isOn ? '#10b981' : '#ef4444',
+                            color: '#ffffff',
+                            marginLeft: 'auto'
+                          }}
+                        >
+                          {isOn ? '⚡ ON' : '⭕ OFF'}
+                        </span>
+                        {isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleDeviceStateInTree(device)}
+                            style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: 'auto' }}
+                          >
+                            {isOn ? 'Turn OFF' : 'Turn ON'}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
             );
           })}
 
@@ -872,6 +1110,7 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
           )}
         </motion.div>
       )}
+      </div>
 
       {/* Orders in Process — Pickup Station Modal */}
       {showPickupModal && (
@@ -983,40 +1222,131 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
               {formMode === 'add' ? (parentSpaceId ? 'Add Table/Room/Canteen' : 'Add Floor/Hall') : `Edit ${SPACE_KIND_LABELS[form.kind]}`}
             </h2>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {formMode === 'add' && (
-                <div>
-                  <label className="field-label" htmlFor="space-kind">
-                    Kind
-                  </label>
-                  <select id="space-kind" className="field-input" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-                    {kindOptions.map((k) => (
-                      <option key={k} value={k}>
-                        {SPACE_KIND_LABELS[k]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {formMode === 'add' ? (
+                <>
+                  <div>
+                    <label className="field-label" htmlFor="space-kind">
+                      Kind
+                    </label>
+                    <select
+                      id="space-kind"
+                      className="field-input"
+                      value={form.kind}
+                      onChange={(e) => {
+                        const k = e.target.value;
+                        const defaultPrefix = k === 'floor' ? 'Floor' : k === 'room' ? 'Room' : k === 'table' ? 'Table' : k === 'canteen' ? 'Canteen' : 'Corridor';
+                        const defaultStartNum = k === 'room' ? '101' : k === 'table' ? '101' : '1';
+                        setForm({ ...form, kind: k, labelPrefix: defaultPrefix, startNumber: defaultStartNum });
+                      }}
+                    >
+                      {kindOptions.map((k) => (
+                        <option key={k} value={k}>
+                          {SPACE_KIND_LABELS[k]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="field-label" htmlFor="space-quantity">
+                        Quantity to Create
+                      </label>
+                      <input
+                        id="space-quantity"
+                        type="number"
+                        min="1"
+                        max="50"
+                        className="field-input"
+                        value={form.quantity}
+                        onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <label className="field-label" htmlFor="space-start-num">
+                        Start Number <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opt)</span>
+                      </label>
+                      <input
+                        id="space-start-num"
+                        type="text"
+                        className="field-input"
+                        placeholder="e.g. 101"
+                        value={form.startNumber}
+                        onChange={(e) => setForm({ ...form, startNumber: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="space-label-prefix">
+                      Label / Alias Prefix
+                    </label>
+                    <input
+                      id="space-label-prefix"
+                      type="text"
+                      className="field-input"
+                      placeholder="e.g. Room, Table, Corridor"
+                      value={form.labelPrefix}
+                      onChange={(e) => setForm({ ...form, labelPrefix: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  {/* Batch Live Preview */}
+                  <div
+                    style={{
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      fontSize: '0.78rem',
+                      color: 'var(--accent-primary)',
+                      fontWeight: 600
+                    }}
+                  >
+                    Preview ({Math.min(50, Math.max(1, Number(form.quantity) || 1))} item/s):{' '}
+                    {Array.from({ length: Math.min(4, Math.max(1, Number(form.quantity) || 1)) })
+                      .map((_, i) => {
+                        const num = Number(form.startNumber);
+                        const hasNum = !isNaN(num) && form.startNumber !== '';
+                        const prefix = form.labelPrefix || 'Item';
+                        return hasNum ? `${prefix} ${num + i}` : Number(form.quantity) > 1 ? `${prefix} #${i + 1}` : prefix;
+                      })
+                      .join(', ')}
+                    {Number(form.quantity) > 4 ? ' ...' : ''}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="field-label" htmlFor="edit-space-label">
+                      Label / Name
+                    </label>
+                    <input
+                      id="edit-space-label"
+                      type="text"
+                      className="field-input"
+                      value={form.labelPrefix}
+                      onChange={(e) => setForm({ ...form, labelPrefix: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="edit-space-number">
+                      Number <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                    </label>
+                    <input
+                      id="edit-space-number"
+                      type="text"
+                      className="field-input"
+                      value={form.startNumber}
+                      onChange={(e) => setForm({ ...form, startNumber: e.target.value })}
+                    />
+                  </div>
+                </>
               )}
-              <div>
-                <label className="field-label" htmlFor="space-label">
-                  Label
-                </label>
-                <input
-                  id="space-label"
-                  type="text"
-                  className="field-input"
-                  placeholder="e.g. Floor 2, Table 12, Room 214"
-                  value={form.label}
-                  onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="space-number">
-                  Number <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
-                </label>
-                <input id="space-number" type="text" className="field-input" value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
-              </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
                   <label className="field-label" htmlFor="space-length">
@@ -1091,6 +1421,85 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
                 {deleting ? 'Deleting…' : 'Delete'}
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add Equipment / IoT Device Modal */}
+      {showDeviceForm && deviceTargetSpace && (
+        <Modal onClose={() => setShowDeviceForm(false)} maxWidth={440}>
+          <div style={{ padding: '2rem' }}>
+            <h2 style={{ marginBottom: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Cpu size={22} color="var(--accent-primary)" /> Add Equipment in {deviceTargetSpace.label}
+            </h2>
+            <form onSubmit={handleDeviceSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="field-label" htmlFor="device-type">
+                  Equipment / Device Type
+                </label>
+                <select
+                  id="device-type"
+                  className="field-input"
+                  value={deviceForm.type}
+                  onChange={(e) => {
+                    const selectedType = e.target.value;
+                    const catalogDef = EQUIPMENT_CATALOG[selectedType];
+                    setDeviceForm({
+                      ...deviceForm,
+                      type: selectedType,
+                      name: deviceForm.name || catalogDef?.label || ''
+                    });
+                  }}
+                >
+                  {Object.entries(EQUIPMENT_CATALOG).map(([key, def]) => (
+                    <option key={key} value={key}>
+                      {def.emoji} {def.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="field-label" htmlFor="device-name">
+                  Device Name
+                </label>
+                <input
+                  id="device-name"
+                  type="text"
+                  className="field-input"
+                  placeholder="e.g. Master Bedroom Smart TV, Main MCB Switch"
+                  value={deviceForm.name}
+                  onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="field-label" htmlFor="device-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="device-quantity"
+                  type="number"
+                  min="1"
+                  max="20"
+                  className="field-input"
+                  value={deviceForm.quantity}
+                  onChange={(e) => setDeviceForm({ ...deviceForm, quantity: e.target.value })}
+                />
+              </div>
+
+              {deviceFormError && <div style={{ color: 'var(--status-cancelled)', fontSize: '0.85rem' }}>{deviceFormError}</div>}
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <Button type="button" variant="ghost" fullWidth onClick={() => setShowDeviceForm(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" fullWidth disabled={savingDevice} loading={savingDevice}>
+                  {savingDevice ? 'Saving…' : 'Create Equipment'}
+                </Button>
+              </div>
+            </form>
           </div>
         </Modal>
       )}
