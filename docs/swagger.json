@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Smart Cafe Manager API",
+    "title": "Cremen Smart Spaces API",
     "version": "1.0.0",
-    "description": "REST API for the Smart Cafe Manager multi-tenant platform — Next.js App Router Route Handlers backed by Supabase. This spec is generated from `@swagger` JSDoc blocks on route handlers by scripts/generateSwagger.js; view it rendered at /api-docs. Only a representative subset of routes carries `@swagger` annotations so far (see the plan doc, Phase 11) — extend the pattern to the rest incrementally by adding the same style of block above any other exported GET/POST/PATCH/DELETE handler."
+    "description": "REST API for the Cremen Smart Spaces multi-tenant platform — Next.js App Router Route Handlers backed by Supabase. This spec is generated from `@swagger` JSDoc blocks on route handlers by scripts/generateSwagger.js; view it rendered at /api-docs. Only a representative subset of routes carries `@swagger` annotations so far (see the plan doc, Phase 11) — extend the pattern to the rest incrementally by adding the same style of block above any other exported GET/POST/PATCH/DELETE handler."
   },
   "servers": [
     {

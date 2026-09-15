@@ -52,7 +52,7 @@ export async function openRazorpayCheckout({ keyId, amount, currency, orderId, n
       amount,
       currency,
       order_id: orderId,
-      name: name || 'Smart Cafe Manager',
+      name: name || 'Cremen Smart Spaces',
       description,
       prefill: prefill || {},
       modal: {

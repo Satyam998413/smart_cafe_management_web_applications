@@ -23,7 +23,7 @@ const messaging = firebase.messaging();
 // message via onMessage() in src/lib/firebaseClient.js instead.
 messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification || {};
-  self.registration.showNotification(title || 'Smart Cafe Manager', {
+  self.registration.showNotification(title || 'Cremen Smart Spaces', {
     body,
     icon: '/favicon.svg',
     data: payload.data

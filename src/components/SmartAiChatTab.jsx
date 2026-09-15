@@ -64,7 +64,7 @@ export default function SmartAiChatTab({ apiFetch, menu, cartApi, messages, setM
     const topItems = menu.slice(0, 10);
 
     if (speechSynthesisApi) {
-      const intro = 'Welcome to Smart Cafe! Here is our complete menu: ';
+      const intro = 'Welcome to Cremen Smart Spaces! Here is our complete menu: ';
       const spoken = topItems.map((item) => `${item.name} for $${item.price.toFixed(2)}`).join(', ');
       speechSynthesisApi.cancel();
       speechSynthesisApi.speak(new SpeechSynthesisUtterance(`${intro} ${spoken}.`));

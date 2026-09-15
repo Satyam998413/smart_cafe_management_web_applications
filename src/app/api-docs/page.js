@@ -19,7 +19,7 @@ async function getApiDocs() {
 }
 
 export const metadata = {
-  title: 'API Docs — Smart Cafe Manager'
+  title: 'API Docs — Cremen Smart Spaces'
 };
 
 export default async function ApiDocsPage() {

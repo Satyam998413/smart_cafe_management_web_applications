@@ -15,7 +15,7 @@ export default function Header({ connected, authName, authRole, onLogout }) {
       <div className="brand">
         <div className="brand-icon">☕</div>
         <div>
-          <h1 className="brand-title">Smart Cafe</h1>
+          <h1 className="brand-title">Cremen Smart Spaces</h1>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             {authRole === 'customer' ? 'Order ahead & track your order' : 'Real-time Manager Hub'}
           </span>

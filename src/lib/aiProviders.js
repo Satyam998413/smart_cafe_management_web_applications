@@ -30,7 +30,7 @@ const PROVIDER_BUILDERS = {
           model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash-0731',
           // OpenRouter uses these (optional, but recommended) to attribute
           // traffic on https://openrouter.ai/rankings.
-          extraHeaders: { 'HTTP-Referer': 'https://smartcafemanager.app', 'X-Title': 'Smart Cafe Manager' }
+          extraHeaders: { 'HTTP-Referer': 'https://cremensmartspaces.app', 'X-Title': 'Cremen Smart Spaces' }
         }
       : null
 };

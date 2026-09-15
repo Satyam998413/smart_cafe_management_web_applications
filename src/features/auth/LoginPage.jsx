@@ -111,7 +111,7 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
           <div>
             <span style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              Smart Cafe
+              Cremen Smart Spaces
             </span>
             <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--accent-primary)', marginLeft: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               PRO PLATFORM
