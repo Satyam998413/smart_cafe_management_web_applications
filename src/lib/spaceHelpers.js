@@ -1,6 +1,6 @@
 import supabase from './supabaseClient.js';
 
-export const SPACE_KINDS = ['floor', 'hall', 'table', 'room', 'canteen'];
+export const SPACE_KINDS = ['floor', 'hall', 'table', 'room', 'canteen', 'gallery'];
 
 // spaces carries no org_id of its own (scoped via site_id -> sites.org_id,
 // same reasoning as order_items/menu_item_option_choices in

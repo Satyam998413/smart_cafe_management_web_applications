@@ -13,6 +13,7 @@ const TABS = [
   { path: '/domain', label: 'Domain' },
   { path: '/ai', label: 'AI Credentials' },
   { path: '/data-plane', label: 'Data Plane' },
+  { path: '/layout-devices', label: 'Layout & Devices' },
   { path: '/wallet', label: 'Wallet' },
   { path: '/staff', label: 'Staff' },
   { path: '/history', label: 'Plan History' },

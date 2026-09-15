@@ -142,6 +142,10 @@ export const serializeSpace = (space) => {
     pricePerNight: toNumber(space.price_per_night),
     description: space.description ?? null,
     maxOccupancy: space.max_occupancy ?? null,
+    // Real-world size in meters (length = x/horizontal, width = y/vertical)
+    // — lets SpaceLayoutCanvas draw this space at its actual proportions.
+    length: toNumber(space.length),
+    width: toNumber(space.width),
     // Present only when the caller's query joined space_images (see
     // GET /api/spaces's `?includeImages=1`) — undefined otherwise, so this
     // key is simply absent rather than always null on every response.

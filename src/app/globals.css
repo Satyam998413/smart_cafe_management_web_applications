@@ -674,7 +674,8 @@ body {
 }
 
 .kind-badge.kind-floor,
-.kind-badge.kind-hall {
+.kind-badge.kind-hall,
+.kind-badge.kind-gallery {
   background: rgba(124, 58, 237, 0.12);
   color: #7c3aed;
 }

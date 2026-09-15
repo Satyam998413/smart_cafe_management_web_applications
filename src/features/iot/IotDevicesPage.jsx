@@ -87,11 +87,13 @@ export default function IotDevicesPage({ apiFetch }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSites();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSpaceId('');
     setSpaces([]);
     if (!siteId) return;
@@ -129,6 +131,7 @@ export default function IotDevicesPage({ apiFetch }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDevices([]);
     if (!spaceId) return undefined;
     setDevicesLoading(true);
@@ -355,7 +358,14 @@ export default function IotDevicesPage({ apiFetch }) {
               No devices registered for this space yet.
             </div>
           ) : viewMode === 'floor-plan' ? (
-            <SpaceLayoutCanvas devices={devices} spaceLabel={selectedSpace?.label || 'Space'} apiFetch={apiFetch} onDeviceMoved={loadDevices} />
+            <SpaceLayoutCanvas
+              devices={devices}
+              spaceLabel={selectedSpace?.label || 'Space'}
+              spaceLength={selectedSpace?.length}
+              spaceWidth={selectedSpace?.width}
+              apiFetch={apiFetch}
+              onDeviceMoved={loadDevices}
+            />
           ) : (
             <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} variants={listVariants} initial="hidden" animate="show">
               {devices.map((device) => {
@@ -410,6 +420,7 @@ function CapabilityControl({ capability, value, onSend }) {
   const [draft, setDraft] = useState(value ?? '');
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!pending) setDraft(value ?? '');
   }, [value, pending]);
 

@@ -35,7 +35,7 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
   const [formMode, setFormMode] = useState('add'); // 'add' | 'edit'
   const [editingId, setEditingId] = useState(null);
   const [parentSpaceId, setParentSpaceId] = useState(null);
-  const [form, setForm] = useState({ kind: 'floor', label: '', number: '', isBookable: false, iotEnabled: false });
+  const [form, setForm] = useState({ kind: 'floor', label: '', number: '', isBookable: false, iotEnabled: false, length: '', width: '' });
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -90,11 +90,13 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSites();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSpaces(selectedSiteId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSiteId]);
@@ -106,7 +108,7 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
     setFormMode('add');
     setEditingId(null);
     setParentSpaceId(parent ? parent.id : null);
-    setForm({ kind: parent ? 'table' : 'floor', label: '', number: '', isBookable: false, iotEnabled: false });
+    setForm({ kind: parent ? 'table' : 'floor', label: '', number: '', isBookable: false, iotEnabled: false, length: '', width: '' });
     setFormError('');
     setShowForm(true);
   };
@@ -115,7 +117,15 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
     setFormMode('edit');
     setEditingId(space.id);
     setParentSpaceId(space.parentSpaceId);
-    setForm({ kind: space.kind, label: space.label, number: space.number || '', isBookable: !!space.isBookable, iotEnabled: !!space.iotEnabled });
+    setForm({
+      kind: space.kind,
+      label: space.label,
+      number: space.number || '',
+      isBookable: !!space.isBookable,
+      iotEnabled: !!space.iotEnabled,
+      length: space.length ?? '',
+      width: space.width ?? ''
+    });
     setFormError('');
     setShowForm(true);
   };
@@ -141,7 +151,9 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
             number: form.number || undefined,
             isBookable: form.isBookable,
             iotEnabled: form.iotEnabled,
-            sortOrder: siblingCount
+            sortOrder: siblingCount,
+            length: form.length === '' ? undefined : Number(form.length),
+            width: form.width === '' ? undefined : Number(form.width)
           })
         });
         const data = await res.json();
@@ -153,7 +165,14 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
       } else {
         const res = await apiFetch(`/spaces/${editingId}`, {
           method: 'PATCH',
-          ...jsonBody({ label: form.label, number: form.number || null, isBookable: form.isBookable, iotEnabled: form.iotEnabled })
+          ...jsonBody({
+            label: form.label,
+            number: form.number || null,
+            isBookable: form.isBookable,
+            iotEnabled: form.iotEnabled,
+            length: form.length === '' ? null : Number(form.length),
+            width: form.width === '' ? null : Number(form.width)
+          })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -412,6 +431,41 @@ export default function LayoutBuilderPage({ apiFetch, authRole, initialSiteId })
                 </label>
                 <input id="space-number" type="text" className="field-input" value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
               </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="field-label" htmlFor="space-length">
+                    Length (m) <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                  </label>
+                  <input
+                    id="space-length"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    className="field-input"
+                    placeholder="e.g. 6"
+                    value={form.length}
+                    onChange={(e) => setForm({ ...form, length: e.target.value })}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="field-label" htmlFor="space-width">
+                    Width (m) <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                  </label>
+                  <input
+                    id="space-width"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    className="field-input"
+                    placeholder="e.g. 4"
+                    value={form.width}
+                    onChange={(e) => setForm({ ...form, width: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '-0.5rem' }}>
+                Used to draw this space to real proportions on the Devices → Floor Plan view.
+              </p>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.isBookable} onChange={(e) => setForm({ ...form, isBookable: e.target.checked })} />
                 Bookable (e.g. hotel rooms)

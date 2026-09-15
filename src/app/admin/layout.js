@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Activity, Building2, Coins, LogOut, Megaphone, ShieldCheck, Ticket } from 'lucide-react';
+import { Activity, Building2, Coins, LogOut, Megaphone, ShieldCheck, Sparkles, Ticket } from 'lucide-react';
 import { createAdminApiFetch } from '@/lib/adminApiClient';
 import { AdminContext } from '@/features/admin/AdminContext';
 import AdminLoginPage from '@/features/admin/AdminLoginPage';
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/admin/coin-plans', label: 'Coin Plans', icon: Coins },
   { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
   { href: '/admin/offers', label: 'Offers', icon: Megaphone },
+  { href: '/admin/ai-configuration', label: 'AI Configuration', icon: Sparkles },
   { href: '/admin/activity', label: 'Activity', icon: Activity }
 ];
 

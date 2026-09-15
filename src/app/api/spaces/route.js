@@ -65,7 +65,9 @@ export async function POST(request) {
       sortOrder,
       pricePerNight,
       description,
-      maxOccupancy
+      maxOccupancy,
+      length,
+      width
     } = await request.json();
     if (!siteId || !kind || !label) {
       return NextResponse.json({ message: 'siteId, kind, and label are required' }, { status: 400 });
@@ -75,6 +77,9 @@ export async function POST(request) {
     }
     if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
       return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
+    }
+    if ((length !== undefined && length !== null && Number(length) <= 0) || (width !== undefined && width !== null && Number(width) <= 0)) {
+      return NextResponse.json({ message: 'length and width must be greater than 0' }, { status: 400 });
     }
     if (!(await assertSiteInOrg(siteId, auth.orgId))) {
       return NextResponse.json({ message: 'Site not found' }, { status: 404 });
@@ -93,7 +98,9 @@ export async function POST(request) {
         sort_order: sortOrder ?? 0,
         price_per_night: pricePerNight ?? null,
         description: description || null,
-        max_occupancy: maxOccupancy ?? null
+        max_occupancy: maxOccupancy ?? null,
+        length: length ?? null,
+        width: width ?? null
       })
       .select('*')
       .single();

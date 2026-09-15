@@ -4,10 +4,13 @@
 // GET /api/spaces?siteId= returns (see src/lib/spaceHelpers.js) and need the
 // same parent_space_id -> children reconstruction to render it as a tree.
 
-// Mirrors src/lib/spaceHelpers.js's SPACE_KINDS — floors/halls sit at the
-// top level; tables/rooms/canteens nest under one of those (vision doc §3d:
-// "one generic builder, not three separate ones per vertical").
-export const TOP_LEVEL_KINDS = ['floor', 'hall'];
+// Mirrors src/lib/spaceHelpers.js's SPACE_KINDS — floors/halls/galleries sit
+// at the top level; tables/rooms/canteens nest under one of those (vision
+// doc §3d: "one generic builder, not three separate ones per vertical").
+// Gallery joins floor/hall rather than table/room/canteen — it's a whole
+// area in its own right (an "art gallery hall"), not something that nests
+// under a floor the way a table or room does.
+export const TOP_LEVEL_KINDS = ['floor', 'hall', 'gallery'];
 export const CHILD_KINDS = ['table', 'room', 'canteen'];
 
 export const SPACE_KIND_LABELS = {
@@ -15,7 +18,8 @@ export const SPACE_KIND_LABELS = {
   hall: 'Hall',
   table: 'Table',
   room: 'Room',
-  canteen: 'Canteen'
+  canteen: 'Canteen',
+  gallery: 'Gallery'
 };
 
 /** "Table 12" — falls back to just the label when there's no number. */

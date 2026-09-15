@@ -14,10 +14,13 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const { label, number, sortOrder, iotEnabled, isBookable, pricePerNight, description, maxOccupancy } =
+    const { label, number, sortOrder, iotEnabled, isBookable, pricePerNight, description, maxOccupancy, length, width } =
       await request.json();
     if (pricePerNight !== undefined && pricePerNight !== null && Number(pricePerNight) < 0) {
       return NextResponse.json({ message: 'pricePerNight must not be negative' }, { status: 400 });
+    }
+    if ((length !== undefined && length !== null && Number(length) <= 0) || (width !== undefined && width !== null && Number(width) <= 0)) {
+      return NextResponse.json({ message: 'length and width must be greater than 0' }, { status: 400 });
     }
 
     const { data: existing, error: fetchError } = await supabase
@@ -39,6 +42,8 @@ export async function PATCH(request, { params }) {
     if (pricePerNight !== undefined) updates.price_per_night = pricePerNight;
     if (description !== undefined) updates.description = description;
     if (maxOccupancy !== undefined) updates.max_occupancy = maxOccupancy;
+    if (length !== undefined) updates.length = length;
+    if (width !== undefined) updates.width = width;
 
     const { data, error } = await supabase.from('spaces').update(updates).eq('id', id).select('*').single();
     if (error) throw error;
