@@ -17,7 +17,8 @@ import {
   X,
   User,
   ArrowLeft,
-  Palette
+  Palette,
+  ShoppingBag
 } from 'lucide-react';
 import { createAdminApiFetch } from '@/lib/adminApiClient';
 import { AdminContext } from '@/features/admin/AdminContext';
@@ -26,6 +27,9 @@ import AdminThemeSettings from '@/features/admin/AdminThemeSettings';
 
 const NAV_ITEMS = [
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/admin/users', label: 'User Directory', icon: User },
+  { href: '/admin/sales-leads', label: 'Sales Leads', icon: ShieldCheck },
+  { href: '/admin/marketplace', label: 'Hardware Marketplace', icon: ShoppingBag },
   { href: '/admin/coin-plans', label: 'Coin Plans', icon: Coins },
   { href: '/admin/coupons', label: 'Coupons', icon: Ticket },
   { href: '/admin/offers', label: 'Offers', icon: Megaphone },
@@ -37,6 +41,15 @@ const NAV_ITEMS = [
 const getPageHeaderInfo = (pathname) => {
   if (pathname === '/admin/theme') {
     return { title: 'Theme & Fonts Settings', subtitle: 'Platform Google fonts, typography scaling & color palette presets', backHref: null };
+  }
+  if (pathname === '/admin/users') {
+    return { title: 'Master User Directory', subtitle: 'Platform-wide and organization user role management', backHref: null };
+  }
+  if (pathname === '/admin/sales-leads') {
+    return { title: 'Sales Leads & Setup Tickets', subtitle: 'Track salesman onboarding orders & technician assignments', backHref: null };
+  }
+  if (pathname === '/admin/marketplace') {
+    return { title: 'Hardware Marketplace Catalog', subtitle: 'Manage IoT switchboards, smart locks, & punching hardware', backHref: null };
   }
   if (pathname === '/admin/organizations/new') {
     return { title: 'Onboard Organization', subtitle: 'Provision a new tenant and grant starter wallet', backHref: '/admin/organizations' };
