@@ -55,7 +55,33 @@ const insertUsersSkippingExisting = async (client, rows) => {
   const existingByEmail = new Map((existing || []).map((u) => [u.email, u]));
 
   const toInsert = rows.filter((row) => !existingByEmail.has(row.email));
-  const inserted = await insertMany(client, 'users', toInsert, 'id, name, email, role');
+  let inserted = [];
+  try {
+    inserted = await insertMany(client, 'users', toInsert, 'id, name, email, role');
+  } catch (err) {
+    if (err.message.includes('users_role_check')) {
+      console.warn('  ⚠️ DB users_role_check constraint does not yet include new roles. Inserting users row-by-row with safe role fallbacks...');
+      inserted = [];
+      for (const userRow of toInsert) {
+        try {
+          const single = await insertOne(client, 'users', userRow, 'id, name, email, role');
+          inserted.push(single);
+        } catch (singleErr) {
+          if (singleErr.message.includes('users_role_check')) {
+            const fallbackRole = userRow.org_id ? 'manager' : 'master_admin';
+            console.warn(`  Fallback user ${userRow.email} role to '${fallbackRole}' due to DB constraint...`);
+            const fallbackSingle = await insertOne(client, 'users', { ...userRow, role: fallbackRole }, 'id, name, email, role');
+            inserted.push(fallbackSingle);
+          } else {
+            throw singleErr;
+          }
+        }
+      }
+    } else {
+      throw err;
+    }
+  }
+
   const insertedByEmail = new Map(inserted.map((u) => [u.email, u]));
 
   if (existingByEmail.size > 0) {
@@ -112,8 +138,6 @@ async function seedSiteAndSpaces(client, orgId) {
           label: childDef.label,
           number: childDef.number,
           description: childDescription,
-          pos_x: childDef.posX ?? null,
-          pos_y: childDef.posY ?? null,
           length: childDef.length ?? null,
           width: childDef.width ?? null,
           is_bookable: !!childDef.isBookable,
@@ -135,8 +159,6 @@ async function seedSiteAndSpaces(client, orgId) {
               label: tblDef.label,
               number: tblDef.number,
               description: tableDescription,
-              pos_x: tblDef.posX ?? null,
-              pos_y: tblDef.posY ?? null,
               sort_order: tblIdx
             });
             createdSpaces.push(tableSpace);
@@ -411,7 +433,11 @@ async function seedHotelBookings(client, orgId, siteId, rooms, hotelUsers) {
 }
 
 async function seedHardwareCatalog(client) {
-  const rows = DEFAULT_HARDWARE_PRODUCTS.map((prod) => ({
+  const modelNumbers = DEFAULT_HARDWARE_PRODUCTS.map((p) => p.model_number);
+  const { data: existing } = await client.from('hardware_catalog').select('model_number').in('model_number', modelNumbers);
+  const existingModels = new Set((existing || []).map((e) => e.model_number));
+
+  const toInsert = DEFAULT_HARDWARE_PRODUCTS.filter((prod) => !existingModels.has(prod.model_number)).map((prod) => ({
     name: prod.name,
     category: prod.category,
     model_number: prod.model_number,
@@ -421,13 +447,16 @@ async function seedHardwareCatalog(client) {
     specifications: prod.specifications,
     image_url: prod.image_url
   }));
-  const { data, error } = await client.from('hardware_catalog').upsert(rows, { onConflict: 'model_number' }).select('id, name');
-  if (error) {
-    // If upsert fails or table not migrated yet, fallback to insert or log warning
-    console.warn('Hardware catalog seeding skipped or deferred:', error.message);
-    return [];
+
+  if (toInsert.length > 0) {
+    const { data, error } = await client.from('hardware_catalog').insert(toInsert).select('id, name');
+    if (error) {
+      console.warn('Hardware catalog seeding warning:', error.message);
+      return [];
+    }
+    return data;
   }
-  return data;
+  return [];
 }
 
 async function main() {
