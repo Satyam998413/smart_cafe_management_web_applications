@@ -9,10 +9,19 @@
 const TABLES = [
   { table: 'device_states', matchColumn: 'updated_at' },
   { table: 'device_commands', matchColumn: 'created_at' },
-  // device_counters has no timestamp column at all (org_id, next_value) —
-  // org_id is its NOT NULL primary key, so it works as the "match
-  // everything" filter the same way a created_at column does elsewhere.
   { table: 'device_counters', matchColumn: 'org_id' },
+  { table: 'attendance_logs', matchColumn: 'timestamp' },
+  { table: 'punching_devices', matchColumn: 'created_at' },
+  { table: 'rfid_cards', matchColumn: 'created_at' },
+  { table: 'smart_locks', matchColumn: 'created_at' },
+  { table: 'hardware_orders', matchColumn: 'created_at' },
+  { table: 'hardware_catalog', matchColumn: 'created_at' },
+  { table: 'organization_services', matchColumn: 'updated_at' },
+  { table: 'inventory_batches', matchColumn: 'created_at' },
+  { table: 'menu_item_recipes', matchColumn: 'created_at' },
+  { table: 'inventory_items', matchColumn: 'created_at' },
+  { table: 'sales_orders', matchColumn: 'created_at' },
+  { table: 'coupons', matchColumn: 'created_at' },
   { table: 'order_item_options', matchColumn: 'created_at' },
   { table: 'order_items', matchColumn: 'created_at' },
   { table: 'order_messages', matchColumn: 'created_at' },

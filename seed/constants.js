@@ -168,6 +168,8 @@ export const DEFAULT_COIN_PLANS = [
 
 export const DEFAULT_USERS = [
   { role: 'master_admin', name: 'Master Admin', email: 'master.admin@smartcafe.test', phone: '+91-90000-00001', password: 'MasterAdmin@123' },
+  { role: 'technician', name: 'Senior Technician Alex', email: 'technician@smartcafe.test', phone: '+91-90000-00008', password: 'Technician@123' },
+  { role: 'technician', name: 'Field Tech Rahul', email: 'tech2@smartcafe.test', phone: '+91-90000-00009', password: 'Technician@123' },
   { role: 'owner', name: 'Owner Demo', email: 'owner@smartcafe.test', phone: '+91-90000-00002', password: 'Owner@123' },
   { role: 'manager', name: 'Manager Demo', email: 'manager@smartcafe.test', phone: '+91-90000-00003', password: 'Manager@123' },
   { role: 'cook', name: 'Cook One', email: 'cook1@smartcafe.test', phone: '+91-90000-00004', password: 'Cook@123' },
@@ -325,5 +327,105 @@ export const BEVERAGE_OPTION_GROUP_DEFINITIONS = [
       { label: 'Almond', priceDelta: 0.5, isDefault: false, sortOrder: 2 },
       { label: 'No Milk', priceDelta: 0, isDefault: false, sortOrder: 3 }
     ]
+  }
+];
+
+export const DEFAULT_HARDWARE_PRODUCTS = [
+  // 1. IoT Controller Switch Boards
+  {
+    name: '4-Channel Smart Wi-Fi Relay Controller Board',
+    category: 'iot_controller',
+    model_number: 'ESP32-RELAY-4CH-WIFI',
+    description: '4-Relay smart Wi-Fi switch controller for AC, Fans, Lights & Appliances with MQTT / Webhook support.',
+    unit_price: 2499.00,
+    stock_quantity: 50,
+    specifications: { relays: 4, connectivity: 'Wi-Fi 2.4GHz + Bluetooth', voltage: '110V-240V AC', protocol: 'MQTT / HTTP Webhook' },
+    image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop'
+  },
+  {
+    name: '8-Channel Industrial Wi-Fi Smart Power Controller',
+    category: 'iot_controller',
+    model_number: 'ESP32-POWER-8CH-IND',
+    description: 'Heavy duty 8-Relay power controller board with real-time power monitoring and RS485 Modbus telemetry.',
+    unit_price: 4999.00,
+    stock_quantity: 35,
+    specifications: { relays: 8, power_monitoring: true, connectivity: 'Wi-Fi + RS485 Modbus', max_current: '16A per channel' },
+    image_url: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?w=600&auto=format&fit=crop'
+  },
+
+  // 2. Smart Locks (Wi-Fi + RFID + Physical Key & Keypad combinations)
+  {
+    name: 'Smart Wi-Fi + RFID Card + Physical Key Door Lock',
+    category: 'smart_lock',
+    model_number: 'SL-WIFI-RFID-KEY-V1',
+    description: 'Multi-mode smart lock featuring RFID card scan, Wi-Fi remote unlock app trigger, and emergency physical keys.',
+    unit_price: 6999.00,
+    stock_quantity: 40,
+    specifications: { unlock_methods: ['rfid_card', 'wifi_app', 'physical_key'], battery_life: '12 months (4x AA)', connectivity: 'Wi-Fi 2.4GHz' },
+    image_url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop'
+  },
+  {
+    name: 'Heavy-Duty Digital Keypad + RFID + Physical Key Smart Lock',
+    category: 'smart_lock',
+    model_number: 'SL-KEYPAD-RFID-KEY-HD',
+    description: 'Weatherproof IP65 smart lock for main entries with digital keypad PIN, RFID card reader, and mechanical override key.',
+    unit_price: 8499.00,
+    stock_quantity: 25,
+    specifications: { unlock_methods: ['digital_keypad', 'rfid_card', 'physical_key'], waterproof_rating: 'IP65', emergency_power: 'USB-C Backup' },
+    image_url: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=600&auto=format&fit=crop'
+  },
+
+  // 3. RFID Cards
+  {
+    name: '13.56MHz Smart RFID Access Card (Pack of 10)',
+    category: 'rfid_card',
+    model_number: 'RFID-1356MHZ-CARD-10P',
+    description: 'Standard 13.56MHz IC Smart Access Cards for staff clock-in and door lock entries.',
+    unit_price: 499.00,
+    stock_quantity: 200,
+    specifications: { frequency: '13.56 MHz ISO14443A', card_type: 'Mifare 1K S50', read_range: '2-5 cm' },
+    image_url: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&auto=format&fit=crop'
+  },
+  {
+    name: 'Dual-Frequency High-Security RFID Keyfob (Pack of 5)',
+    category: 'rfid_card',
+    model_number: 'RFID-KEYFOB-DUAL-5P',
+    description: 'Waterproof ABS dual-frequency keyfobs (125kHz + 13.56MHz) for manager level access.',
+    unit_price: 699.00,
+    stock_quantity: 150,
+    specifications: { frequency: '125kHz + 13.56MHz Dual', material: 'ABS Waterproof', color: 'Midnight Blue' },
+    image_url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop'
+  },
+
+  // 4. Punching Systems (RFID, Thumbprint, Fingerprint + AI Face Recognition)
+  {
+    name: 'Wi-Fi RFID Card Staff Punching Attendance Reader',
+    category: 'punching_device',
+    model_number: 'PUNCH-RFID-WF1',
+    description: 'Compact Wi-Fi RFID card attendance punching terminal with LCD screen and instant server sync.',
+    unit_price: 3499.00,
+    stock_quantity: 30,
+    specifications: { type: 'rfid_reader', scan_speed: '< 0.2s', user_capacity: 5000, display: 'LCD 2.4 inch' },
+    image_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop'
+  },
+  {
+    name: 'Biometric Thumbprint & Fingerprint Attendance Punch Scanner',
+    category: 'punching_device',
+    model_number: 'PUNCH-FINGER-BIO2',
+    description: 'High precision optical thumbprint scanner for staff attendance with offline log buffering.',
+    unit_price: 5499.00,
+    stock_quantity: 20,
+    specifications: { type: 'thumbprint_scanner', sensor: 'Optical 500 DPI', fingerprint_capacity: 3000, log_capacity: 100000 },
+    image_url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop'
+  },
+  {
+    name: 'Dual Hybrid Thumbprint + AI Face Recognition Punching Terminal',
+    category: 'punching_device',
+    model_number: 'PUNCH-HYBRID-FACE-BIO',
+    description: 'AI dual-camera face recognition + fingerprint + RFID hybrid punching terminal with touch screen.',
+    unit_price: 11999.00,
+    stock_quantity: 15,
+    specifications: { type: 'hybrid_biometric', recognition: ['face_recognition', 'thumbprint', 'rfid'], camera: 'Dual IR + RGB Live Face', face_capacity: 1000 },
+    image_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop'
   }
 ];

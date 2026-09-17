@@ -20,7 +20,8 @@ import {
   DEFAULT_EQUIPMENT_POSITIONS,
   DEFAULT_HOTEL_USERS,
   DEFAULT_HOTEL_WALLET,
-  DEFAULT_BOOKINGS
+  DEFAULT_BOOKINGS,
+  DEFAULT_HARDWARE_PRODUCTS
 } from './constants.js';
 
 const insertOne = async (client, table, row, select = '*') => {
@@ -409,6 +410,26 @@ async function seedHotelBookings(client, orgId, siteId, rooms, hotelUsers) {
   return insertMany(client, 'bookings', rows, 'id, status');
 }
 
+async function seedHardwareCatalog(client) {
+  const rows = DEFAULT_HARDWARE_PRODUCTS.map((prod) => ({
+    name: prod.name,
+    category: prod.category,
+    model_number: prod.model_number,
+    description: prod.description,
+    unit_price: prod.unit_price,
+    stock_quantity: prod.stock_quantity,
+    specifications: prod.specifications,
+    image_url: prod.image_url
+  }));
+  const { data, error } = await client.from('hardware_catalog').upsert(rows, { onConflict: 'model_number' }).select('id, name');
+  if (error) {
+    // If upsert fails or table not migrated yet, fallback to insert or log warning
+    console.warn('Hardware catalog seeding skipped or deferred:', error.message);
+    return [];
+  }
+  return data;
+}
+
 async function main() {
   const client = getAdminClient();
 
@@ -430,6 +451,9 @@ async function main() {
 
   console.log('Upserting platform coin plans...');
   await seedCoinPlans(client);
+
+  console.log('Upserting default hardware products (RFID, Wi-Fi Switches, Smart Locks, Punching Systems)...');
+  const hardwareItems = await seedHardwareCatalog(client);
 
   console.log('Creating default menu...');
   const { savedMenuItems, optionGroupCount, optionChoiceCount } = await seedMenu(client, org.id);

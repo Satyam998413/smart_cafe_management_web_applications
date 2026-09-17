@@ -5,7 +5,7 @@ import { createMockQueryBuilder } from '@/testUtils/mockQueryBuilder.js';
 import { authHeader } from '@/testUtils/authTestHelpers.js';
 import { GET, POST } from './route.js';
 
-vi.mock('@/lib/supabaseClient.js', () => ({ default: { from: vi.fn() } }));
+vi.mock('@/lib/supabaseClient.js', () => ({ default: { from: vi.fn(), rpc: vi.fn().mockResolvedValue({ data: 1, error: null }) } }));
 
 const URL = 'http://localhost/api/iot-devices';
 const jsonRequest = (body, headers = {}) =>
@@ -58,7 +58,7 @@ describe('POST /api/iot-devices', () => {
   });
 
   it('registers the device, defaulting vendor to mock and stamping org_id', async () => {
-    const builder = createMockQueryBuilder({ data: { id: 'device-1', vendor: 'mock' }, error: null });
+    const builder = createMockQueryBuilder({ data: [{ id: 'device-1', vendor: 'mock' }], error: null });
     supabase.from.mockReturnValue(builder);
 
     const res = await POST(
@@ -66,8 +66,8 @@ describe('POST /api/iot-devices', () => {
     );
 
     expect(res.status).toBe(201);
-    expect(builder.insert).toHaveBeenCalledWith(
+    expect(builder.insert).toHaveBeenCalledWith([
       expect.objectContaining({ space_id: 's1', name: 'Lamp', type: 'light', vendor: 'mock', org_id: 'org-1' })
-    );
+    ]);
   });
 });
