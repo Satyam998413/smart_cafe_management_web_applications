@@ -46,6 +46,26 @@ async function cleanupOrgData(client, { org, userEmails }) {
   if (orgLookupError) throw orgLookupError;
 
   if (orgRow) {
+    await client.from('order_messages').delete().eq('org_id', orgRow.id);
+    await client.from('manager_cook_messages').delete().eq('org_id', orgRow.id);
+    await client.from('ratings').delete().eq('org_id', orgRow.id);
+    await client.from('bills').delete().eq('org_id', orgRow.id);
+    await client.from('coupon_redemptions').delete().eq('org_id', orgRow.id);
+
+    const { data: orgOrders } = await client.from('orders').select('id').eq('org_id', orgRow.id);
+    if (orgOrders && orgOrders.length > 0) {
+      const orderIds = orgOrders.map((o) => o.id);
+      const { data: orgOrderItems } = await client.from('order_items').select('id').in('order_id', orderIds);
+      if (orgOrderItems && orgOrderItems.length > 0) {
+        const orderItemIds = orgOrderItems.map((oi) => oi.id);
+        await client.from('order_item_options').delete().in('order_item_id', orderItemIds);
+      }
+      await client.from('order_items').delete().in('order_id', orderIds);
+      await client.from('orders').delete().eq('org_id', orgRow.id);
+    }
+
+    await client.from('menu_item_recipes').delete().eq('org_id', orgRow.id);
+
     const { count: devicesDeleted, error: devicesError } = await client.from('devices').delete({ count: 'exact' }).eq('org_id', orgRow.id);
     if (devicesError) throw devicesError;
     summary.devices = devicesDeleted || 0;

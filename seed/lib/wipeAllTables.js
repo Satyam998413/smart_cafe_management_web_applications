@@ -18,7 +18,7 @@ const TABLES = [
   { table: 'hardware_catalog', matchColumn: 'created_at' },
   { table: 'organization_services', matchColumn: 'updated_at' },
   { table: 'inventory_batches', matchColumn: 'created_at' },
-  { table: 'menu_item_recipes', matchColumn: 'created_at' },
+  { table: 'menu_item_recipes', matchColumn: 'id' },
   { table: 'inventory_items', matchColumn: 'created_at' },
   { table: 'sales_orders', matchColumn: 'created_at' },
   { table: 'coupons', matchColumn: 'created_at' },
