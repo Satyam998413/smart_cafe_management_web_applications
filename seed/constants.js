@@ -170,6 +170,7 @@ export const DEFAULT_USERS = [
   { role: 'master_admin', name: 'Master Admin', email: 'master.admin@smartcafe.test', phone: '+91-90000-00001', password: 'MasterAdmin@123' },
   { role: 'technician', name: 'Senior Technician Alex', email: 'technician@smartcafe.test', phone: '+91-90000-00008', password: 'Technician@123' },
   { role: 'technician', name: 'Field Tech Rahul', email: 'tech2@smartcafe.test', phone: '+91-90000-00009', password: 'Technician@123' },
+  { role: 'salesman', name: 'Sales Executive Priya', email: 'salesman@smartcafe.test', phone: '+91-90000-00010', password: 'Salesman@123' },
   { role: 'owner', name: 'Owner Demo', email: 'owner@smartcafe.test', phone: '+91-90000-00002', password: 'Owner@123' },
   { role: 'manager', name: 'Manager Demo', email: 'manager@smartcafe.test', phone: '+91-90000-00003', password: 'Manager@123' },
   { role: 'cook', name: 'Cook One', email: 'cook1@smartcafe.test', phone: '+91-90000-00004', password: 'Cook@123' },
