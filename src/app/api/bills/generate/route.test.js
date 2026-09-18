@@ -29,9 +29,20 @@ describe('POST /api/bills/generate', () => {
     const builder = createMockQueryBuilder({ data: [], error: null });
     supabase.from.mockReturnValue(builder);
 
-    const res = await POST(jsonRequest({}, authHeader({ role: 'customer', userId: 'cust-1' })));
+    const res = await POST(jsonRequest({}, authHeader({ role: 'customer', userId: 'cust-1', orgId: 'org-1' })));
 
     expect(res.status).toBe(400);
+  });
+
+  // bills.org_id is NOT NULL (every tenant-scoped table in this schema is) —
+  // an account with no org on its JWT must be rejected before ever reaching
+  // the insert, which would otherwise fail the NOT NULL constraint and
+  // surface to the client as an opaque 500 instead of a clear 400.
+  it('rejects bill generation for an account with no organization', async () => {
+    const res = await POST(jsonRequest({}, authHeader({ role: 'customer', userId: 'cust-1', orgId: null })));
+
+    expect(res.status).toBe(400);
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it("scopes a customer's own request to their own orders", async () => {
@@ -40,7 +51,7 @@ describe('POST /api/bills/generate', () => {
     const linkBuilder = createMockQueryBuilder({ data: null, error: null });
     supabase.from.mockReturnValueOnce(ordersBuilder).mockReturnValueOnce(billBuilder).mockReturnValueOnce(linkBuilder);
 
-    await POST(jsonRequest({}, authHeader({ role: 'customer', userId: 'cust-1' })));
+    await POST(jsonRequest({}, authHeader({ role: 'customer', userId: 'cust-1', orgId: 'org-1' })));
 
     expect(ordersBuilder.eq).toHaveBeenCalledWith('user_id', 'cust-1');
   });
@@ -51,7 +62,7 @@ describe('POST /api/bills/generate', () => {
     const linkBuilder = createMockQueryBuilder({ data: null, error: null });
     supabase.from.mockReturnValueOnce(ordersBuilder).mockReturnValueOnce(billBuilder).mockReturnValueOnce(linkBuilder);
 
-    await POST(jsonRequest({ spaceId: 'space-1' }, authHeader({ role: 'manager' })));
+    await POST(jsonRequest({ spaceId: 'space-1' }, authHeader({ role: 'manager', orgId: 'org-1' })));
 
     expect(ordersBuilder.eq).toHaveBeenCalledWith('space_id', 'space-1');
     expect(ordersBuilder.eq).not.toHaveBeenCalledWith('user_id', expect.anything());

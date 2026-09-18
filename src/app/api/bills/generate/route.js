@@ -49,6 +49,15 @@ export async function POST(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
 
+  // bills.org_id is NOT NULL (every tenant-scoped table in this schema is)
+  // — an account with no org on its JWT yet (e.g. a customer who registered
+  // without ever scanning a table/room QR) must be rejected here rather
+  // than reaching the insert below, which would otherwise fail the
+  // NOT NULL constraint and surface as an opaque 500.
+  if (!auth.orgId) {
+    return NextResponse.json({ message: 'No organization associated with this account' }, { status: 400 });
+  }
+
   try {
     const { spaceId: overrideSpaceId } = await request.json().catch(() => ({}));
     const isStaff = ['owner', 'manager'].includes(auth.userRole);
@@ -93,10 +102,6 @@ export async function POST(request) {
       .select('*')
       .single();
     if (billError) throw billError;
-    try {
-      const fs = await import('fs');
-      fs.appendFileSync('C:/Satyam_WorkSpace/My_Flutter_Learning/smart_cafe_manager/smart_cafe_management_web_applications/debug_trace.txt', `role=${auth.userRole} orgId=${auth.orgId} userId=${auth.userId} spaceId=${spaceId} ordersLen=${orders.length} bill=${JSON.stringify(bill)} fromCalls=${supabase.from.mock.calls.length}\n`);
-    } catch {}
 
     const { error: linkError } = await supabase
       .from('orders')
