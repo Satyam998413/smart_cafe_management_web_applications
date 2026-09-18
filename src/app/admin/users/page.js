@@ -45,7 +45,7 @@ export default function AdminUsersPage() {
 
   const fetchOrganizations = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
       const res = await fetch('/api/admin/organizations', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
       let url = `/api/admin/users?role=${activeTab}`;
       if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',

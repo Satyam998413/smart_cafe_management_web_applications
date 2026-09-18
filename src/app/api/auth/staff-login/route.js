@@ -15,7 +15,7 @@ const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 // Every password-based, non-customer role (plan Phase 2's expanded role
 // model). One shared login route for all of them; role-specific
 // authorization happens downstream via requireRole/requireMasterAdmin.
-const STAFF_LOGIN_ROLES = ['master_admin', 'owner', 'manager', 'cook', 'waiter'];
+const STAFF_LOGIN_ROLES = ['master_admin', 'salesman', 'technician', 'owner', 'manager', 'cook', 'waiter'];
 
 // POST /api/auth/staff-login — ported from server/src/controllers/
 // staffAuthController.js.

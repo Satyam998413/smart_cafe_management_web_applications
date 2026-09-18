@@ -24,18 +24,20 @@ import { OrgDetailContext } from '@/features/admin/OrgDetailContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import ThemeToggle from '@/components/ThemeToggle';
+import { Sliders } from 'lucide-react';
 
 const TABS = [
   { path: '', label: 'Overview', desc: 'Org summary & details', icon: Building2, step: '01' },
-  { path: '/domain', label: 'Custom Domain', desc: 'Domain & SSL routing', icon: Globe, step: '02' },
-  { path: '/ai', label: 'AI Credentials', desc: 'LLM & voice provider keys', icon: Sparkles, step: '03' },
-  { path: '/theme', label: 'Theme & Fonts', desc: 'Custom fonts, scaling & palette', icon: Palette, step: '04' },
-  { path: '/data-plane', label: 'Data Plane', desc: 'Shared DB or BYO Supabase', icon: Database, step: '05' },
-  { path: '/layout-devices', label: 'Layout & Devices', desc: 'Spaces & IoT controller', icon: Cpu, step: '06' },
-  { path: '/wallet', label: 'Wallet & Coins', desc: 'Credits & coin plan', icon: Wallet, step: '07' },
-  { path: '/staff', label: 'Staff Roster', desc: 'User accounts & permissions', icon: Users, step: '08' },
-  { path: '/history', label: 'Plan History', desc: 'Subscriptions & audits', icon: History, step: '09' },
-  { path: '/security-log', label: 'Security Log', desc: 'Access logs & auth events', icon: ShieldAlert, step: '10' }
+  { path: '/services', label: 'Services & Flags', desc: 'IoT, locks & POS features', icon: Sliders, step: '02' },
+  { path: '/domain', label: 'Custom Domain', desc: 'Domain & SSL routing', icon: Globe, step: '03' },
+  { path: '/ai', label: 'AI Credentials', desc: 'LLM & voice provider keys', icon: Sparkles, step: '04' },
+  { path: '/theme', label: 'Theme & Fonts', desc: 'Custom fonts, scaling & palette', icon: Palette, step: '05' },
+  { path: '/data-plane', label: 'Data Plane', desc: 'Shared DB or BYO Supabase', icon: Database, step: '06' },
+  { path: '/layout-devices', label: 'Layout & Devices', desc: 'Spaces & IoT controller', icon: Cpu, step: '07' },
+  { path: '/wallet', label: 'Wallet & Coins', desc: 'Credits & coin plan', icon: Wallet, step: '08' },
+  { path: '/staff', label: 'Staff Roster', desc: 'User accounts & permissions', icon: Users, step: '09' },
+  { path: '/history', label: 'Plan History', desc: 'Subscriptions & audits', icon: History, step: '10' },
+  { path: '/security-log', label: 'Security Log', desc: 'Access logs & auth events', icon: ShieldAlert, step: '11' }
 ];
 
 export default function OrgDetailLayout({ children }) {

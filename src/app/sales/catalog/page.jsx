@@ -1,0 +1,159 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import {
+  ShoppingBag,
+  Cpu,
+  Lock,
+  Fingerprint,
+  PlusCircle,
+  CheckCircle2,
+  Tag,
+  DollarSign,
+  ShieldCheck,
+  RefreshCw
+} from 'lucide-react';
+
+export default function SalesCatalogPage() {
+  const [hardwareItems, setHardwareItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    fetchCatalog();
+  }, []);
+
+  const fetchCatalog = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/hardware-catalog');
+      if (res.ok) {
+        const data = await res.json();
+        setHardwareItems(data);
+      }
+    } catch (err) {
+      console.error('Failed to load hardware catalog:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredItems = hardwareItems.filter((item) =>
+    selectedCategory === 'all' ? true : item.category === selectedCategory
+  );
+
+  const getCategoryIcon = (category) => {
+    if (category === 'smart_lock') return Lock;
+    if (category === 'punching_device') return Fingerprint;
+    if (category === 'iot_controller') return Cpu;
+    return Tag;
+  };
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <ShoppingBag className="text-emerald-400" /> Hardware Marketplace Catalog
+          </h1>
+          <p className="text-slate-400 text-xs md:text-sm mt-1">
+            Demonstrate hardware products, specifications, unit prices, and stock availability during client visits.
+          </p>
+        </div>
+
+        <Link
+          href="/sales/onboarding"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs hover:from-emerald-400 hover:to-teal-400 transition shadow-lg shadow-emerald-500/20"
+        >
+          <PlusCircle size={16} />
+          <span>Build Quote Cart</span>
+        </Link>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800">
+        {[
+          { id: 'all', label: 'All Products' },
+          { id: 'iot_controller', label: 'Wi-Fi Relay Controllers' },
+          { id: 'smart_lock', label: 'Smart Locks & Keypads' },
+          { id: 'punching_device', label: 'Biometric & Face Punching' },
+          { id: 'rfid_card', label: 'RFID Cards' }
+        ].map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              selectedCategory === cat.id
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
+            }`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Products Grid */}
+      {loading ? (
+        <div className="py-20 text-center text-slate-400">
+          <RefreshCw className="w-8 h-8 animate-spin text-emerald-400 mx-auto mb-2" />
+          <p className="text-sm">Loading catalog items...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((item) => {
+            const Icon = getCategoryIcon(item.category);
+
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col justify-between gap-6 hover:border-emerald-500/30 transition group"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 capitalize">
+                      <Icon size={14} /> {item.category.replace('_', ' ')}
+                    </span>
+                    <span className="text-xs font-mono text-slate-400">Model: {item.model_number}</span>
+                  </div>
+
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="w-full h-40 object-cover rounded-2xl border border-slate-800 group-hover:scale-105 transition duration-300" />
+                  ) : (
+                    <div className="w-full h-40 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center text-slate-600">
+                      <Icon size={40} />
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">{item.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{item.description}</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-500 block">Unit Price (excl. GST)</span>
+                    <span className="text-xl font-extrabold text-white">₹{parseFloat(item.unit_price).toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <Link
+                    href="/sales/onboarding"
+                    className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
+                  >
+                    <PlusCircle size={14} /> Add to Quote
+                  </Link>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -24,15 +24,10 @@ export const serializeUser = (user) => {
     phone: user.phone,
     hiveId: user.hive_id,
     role: user.role || 'customer',
+    orgId: user.org_id ?? null,
+    org: user.org ? { id: user.org.id, name: user.org.name, premiseType: user.org.premise_type } : (user.org_id ? { id: user.org_id, name: user.org_id } : null),
     authProvider: user.auth_provider || 'password',
-    // Staff's site/space assignment (plan Phase 2c) — not sensitive, and the
-    // Staff page needs it to show/edit who's assigned where without a
-    // second round-trip per row.
     spaceId: user.space_id ?? null,
-    // Grantable flags (canResetStaffPassword, canControlIot) — only ever
-    // meaningful for a Manager, empty object for everyone else. Not
-    // sensitive; the Staff page needs it to render an Owner's permission
-    // toggles without a second round-trip per row.
     permissions: user.permissions || {},
     preferences: { orderCount: user.order_count ?? 0 },
     createdAt: user.created_at
@@ -470,5 +465,59 @@ export const serializeDeliveryZone = (zone) => {
     pincode: zone.pincode,
     deliveryFee: toNumber(zone.delivery_fee),
     etaMinutes: zone.eta_minutes
+  };
+};
+
+export const serializeHardwareItem = (item) => {
+  if (!item) return null;
+  let images = [];
+  let imageUrl = item.image_url || '';
+
+  if (item.image_url) {
+    if (typeof item.image_url === 'string' && item.image_url.startsWith('[') && item.image_url.endsWith(']')) {
+      try {
+        images = JSON.parse(item.image_url);
+        if (Array.isArray(images) && images.length > 0) {
+          imageUrl = images[0];
+        }
+      } catch {
+        images = [item.image_url];
+      }
+    } else if (typeof item.image_url === 'string' && item.image_url.includes(',')) {
+      images = item.image_url.split(',').map((s) => s.trim()).filter(Boolean);
+      if (images.length > 0) imageUrl = images[0];
+    } else {
+      images = [item.image_url];
+    }
+  }
+
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    images = item.images;
+    if (!imageUrl) imageUrl = images[0];
+  }
+
+  // Enforce 1 to 5 images
+  if (images.length === 0) {
+    images = ['https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop'];
+  }
+  images = images.slice(0, 5);
+
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    model_number: item.model_number || item.modelNumber,
+    modelNumber: item.model_number || item.modelNumber,
+    description: item.description,
+    unit_price: toNumber(item.unit_price),
+    unitPrice: toNumber(item.unit_price),
+    stock_quantity: item.stock_quantity ?? 0,
+    stockQuantity: item.stock_quantity ?? 0,
+    specifications: item.specifications || {},
+    image_url: imageUrl,
+    imageUrl,
+    images,
+    is_active: item.is_active,
+    createdAt: item.created_at
   };
 };

@@ -10,8 +10,17 @@ export default function LoginPageContainer() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
     if (token) {
-      router.replace('/orders');
+      if (role === 'master_admin') {
+        router.replace('/admin/organizations');
+      } else if (role === 'salesman') {
+        router.replace('/sales/dashboard');
+      } else if (role === 'technician') {
+        router.replace('/technician/dashboard');
+      } else {
+        router.replace('/orders');
+      }
     } else {
       setChecking(false);
     }
@@ -23,8 +32,12 @@ export default function LoginPageContainer() {
     localStorage.setItem('userName', name);
     localStorage.setItem('userId', userId);
 
-    if (role === 'owner' || role === 'manager') {
-      router.replace('/orders');
+    if (role === 'master_admin') {
+      router.replace('/admin/organizations');
+    } else if (role === 'salesman') {
+      router.replace('/sales/dashboard');
+    } else if (role === 'technician') {
+      router.replace('/technician/dashboard');
     } else {
       router.replace('/orders');
     }

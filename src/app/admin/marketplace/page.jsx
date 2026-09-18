@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Lock, CreditCard, Fingerprint, Plus, RefreshCw, ShoppingCart, Check, Tag, ShieldCheck } from 'lucide-react';
+import { Cpu, Lock, CreditCard, Fingerprint, Plus, RefreshCw, ShoppingCart, Check, Tag, ShieldCheck, Image as ImageIcon, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CATEGORIES = [
   { id: 'all', name: 'All Equipment', icon: Cpu },
@@ -17,13 +17,16 @@ export default function HardwareMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form supporting 1 to 5 image URLs
   const [formData, setFormData] = useState({
     name: '',
     category: 'iot_controller',
     model_number: '',
     unit_price: '',
     stock_quantity: '',
-    description: ''
+    description: '',
+    images: [''] // Min 1, Max 5
   });
 
   const fetchCatalog = async () => {
@@ -46,9 +49,34 @@ export default function HardwareMarketplacePage() {
     fetchCatalog();
   }, [activeCategory]);
 
+  const handleAddImageUrl = () => {
+    if (formData.images.length < 5) {
+      setFormData({ ...formData, images: [...formData.images, ''] });
+    }
+  };
+
+  const handleRemoveImageUrl = (index) => {
+    if (formData.images.length > 1) {
+      setFormData({ ...formData, images: formData.images.filter((_, i) => i !== index) });
+    }
+  };
+
+  const handleImageUrlChange = (index, value) => {
+    const updated = [...formData.images];
+    updated[index] = value;
+    setFormData({ ...formData, images: updated });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+    const validImages = formData.images.map((img) => img.trim()).filter(Boolean);
+
+    if (validImages.length === 0) {
+      alert('Please provide at least 1 image URL (min 1, max 5 images).');
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/hardware-catalog', {
         method: 'POST',
@@ -56,11 +84,16 @@ export default function HardwareMarketplacePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          images: validImages.slice(0, 5),
+          image_url: validImages[0]
+        })
       });
+
       if (res.ok) {
         setShowAddModal(false);
-        setFormData({ name: '', category: 'iot_controller', model_number: '', unit_price: '', stock_quantity: '', description: '' });
+        setFormData({ name: '', category: 'iot_controller', model_number: '', unit_price: '', stock_quantity: '', description: '', images: [''] });
         fetchCatalog();
       }
     } catch (err) {
@@ -77,10 +110,10 @@ export default function HardwareMarketplacePage() {
             <ShieldCheck className="w-5 h-5" /> Master Admin & Technician Portal
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mt-1">
-            Hardware Marketplace & CRUD Catalog
+            Hardware Marketplace & Photo Gallery
           </h1>
           <p className="text-slate-400 mt-1 text-sm md:text-base">
-            Manage smart Wi-Fi controllers, RFID locks, biometric scanners, and sensor equipment for all premise setups.
+            Manage smart Wi-Fi controllers, RFID locks, biometric scanners, and sensor equipment (up to 5 product photos per item stored in <code className="text-sky-300">hardware/&#123;id&#125;/images</code>).
           </p>
         </div>
 
@@ -88,11 +121,11 @@ export default function HardwareMarketplacePage() {
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg shadow-sky-500/20 transition-all duration-200 cursor-pointer"
         >
-          <Plus className="w-5 h-5" /> Add New Equipment
+          <Plus className="w-5 h-5" /> Add Equipment (Min 1, Max 5 Photos)
         </button>
       </motion.div>
 
-      {/* Category Pills */}
+      {/* Category Filter Pills */}
       <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-8 no-scrollbar">
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
@@ -131,45 +164,7 @@ export default function HardwareMarketplacePage() {
               </div>
             ) : (
               items.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  whileHover={{ y: -5 }}
-                  className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl backdrop-blur-sm hover:border-slate-700 transition-all duration-200"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                        {item.category.replace('_', ' ')}
-                      </span>
-                      <span className="text-xs text-slate-400 font-mono">
-                        Model: {item.model_number}
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-bold text-white mb-2 leading-snug">{item.name}</h3>
-                    <p className="text-slate-400 text-xs line-clamp-2 mb-4 leading-relaxed">
-                      {item.description || 'High quality Wi-Fi enabled hardware component engineered for Smart Cafe & Premises.'}
-                    </p>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-slate-500 block">Unit Price</span>
-                      <span className="text-xl font-extrabold text-sky-400">₹{item.unit_price}</span>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-xs text-slate-500 block">Stock Available</span>
-                      <span className={`text-sm font-semibold ${item.stock_quantity > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {item.stock_quantity > 0 ? `${item.stock_quantity} units` : 'Out of Stock'}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
+                <HardwareCard key={item.id} item={item} />
               ))
             )}
           </AnimatePresence>
@@ -179,16 +174,17 @@ export default function HardwareMarketplacePage() {
       {/* Add Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">Add Equipment to Catalog</h2>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-2">Add Equipment to Catalog</h2>
+            <p className="text-xs text-slate-400 mb-4">Attach between 1 to 5 image URLs for hardware demonstrations</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs text-slate-400 font-medium block mb-1">Equipment Name</label>
+                <label className="text-xs text-slate-400 font-medium block mb-1">Equipment Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 4-Channel Wi-Fi Relay Board"
+                  placeholder="e.g. 4-Channel Wi-Fi Relay Switchboard"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-sky-500"
@@ -211,7 +207,7 @@ export default function HardwareMarketplacePage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-400 font-medium block mb-1">Model Number</label>
+                  <label className="text-xs text-slate-400 font-medium block mb-1">Model Number *</label>
                   <input
                     type="text"
                     required
@@ -225,7 +221,7 @@ export default function HardwareMarketplacePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 font-medium block mb-1">Unit Price (₹)</label>
+                  <label className="text-xs text-slate-400 font-medium block mb-1">Unit Price (₹) *</label>
                   <input
                     type="number"
                     required
@@ -237,7 +233,7 @@ export default function HardwareMarketplacePage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-400 font-medium block mb-1">Stock Quantity</label>
+                  <label className="text-xs text-slate-400 font-medium block mb-1">Stock Quantity *</label>
                   <input
                     type="number"
                     required
@@ -249,18 +245,58 @@ export default function HardwareMarketplacePage() {
                 </div>
               </div>
 
+              {/* Product Images (Min 1, Max 5) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon size={14} className="text-sky-400" /> Equipment Photos (Min 1, Max 5)
+                  </label>
+                  {formData.images.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={handleAddImageUrl}
+                      className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1"
+                    >
+                      <Plus size={14} /> Add Image
+                    </button>
+                  )}
+                </div>
+
+                {formData.images.map((url, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      required={idx === 0}
+                      placeholder={`Image URL #${idx + 1} (https://...)`}
+                      value={url}
+                      onChange={(e) => handleImageUrlChange(idx, e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                    />
+                    {formData.images.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImageUrl(idx)}
+                        className="p-2 text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-xl"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div>
                 <label className="text-xs text-slate-400 font-medium block mb-1">Description</label>
                 <textarea
                   rows="3"
-                  placeholder="Hardware features and setup instructions..."
+                  placeholder="Hardware specifications, relay channels, and installation notes..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-sky-500"
                 ></textarea>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -281,5 +317,97 @@ export default function HardwareMarketplacePage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Hardware Card Component with 1-to-5 Image Gallery Carousel
+function HardwareCard({ item }) {
+  const images = Array.isArray(item.images) && item.images.length > 0 ? item.images : [item.imageUrl || item.image_url || 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop'];
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+
+  const nextImage = (e) => {
+    e.stopPropagation();
+    setActiveImageIdx((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    setActiveImageIdx((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -5 }}
+      className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-xl backdrop-blur-sm hover:border-slate-700 transition-all duration-200 group"
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            {item.category?.replace('_', ' ')}
+          </span>
+          <span className="text-xs text-slate-400 font-mono">
+            Model: {item.modelNumber || item.model_number}
+          </span>
+        </div>
+
+        {/* Photo Gallery Carousel (Up to 5 images) */}
+        <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+          <img
+            src={images[activeImageIdx]}
+            alt={item.name}
+            className="w-full h-full object-cover transition-all duration-300"
+          />
+
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-950/70 text-white hover:bg-slate-900 opacity-80 hover:opacity-100 transition"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-950/70 text-white hover:bg-slate-900 opacity-80 hover:opacity-100 transition"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-slate-950/80 px-2 py-0.5 rounded-full border border-slate-800">
+                {images.map((_, i) => (
+                  <span
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); setActiveImageIdx(i); }}
+                    className={`w-1.5 h-1.5 rounded-full cursor-pointer ${i === activeImageIdx ? 'bg-sky-400' : 'bg-slate-600'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <h3 className="text-lg font-bold text-white leading-snug">{item.name}</h3>
+        <p className="text-slate-400 text-xs line-clamp-2 leading-relaxed">
+          {item.description || 'High quality Wi-Fi enabled hardware component engineered for Smart Cafe & Premises.'}
+        </p>
+      </div>
+
+      <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between mt-3">
+        <div>
+          <span className="text-xs text-slate-500 block">Unit Price</span>
+          <span className="text-xl font-extrabold text-sky-400">₹{item.unitPrice || item.unit_price}</span>
+        </div>
+
+        <div className="text-right">
+          <span className="text-xs text-slate-500 block">Stock Available</span>
+          <span className={`text-sm font-semibold ${(item.stockQuantity || item.stock_quantity) > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {(item.stockQuantity || item.stock_quantity) > 0 ? `${item.stockQuantity || item.stock_quantity} units` : 'Out of Stock'}
+          </span>
+        </div>
+      </div>
+    </motion.div>
   );
 }
