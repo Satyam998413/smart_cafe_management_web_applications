@@ -13,11 +13,21 @@ import { DEFAULT_ORG, DEFAULT_USERS, DEFAULT_HOTEL_ORG, DEFAULT_HOTEL_USERS } fr
  * (platform-wide catalog, not org-scoped, possibly referenced by other
  * orgs' coin_purchases).
  *
- * Deletion order matters and has bitten this project twice already:
- *   - `devices`/`bookings`/`menu_items`.org_id have no ON DELETE CASCADE
- *     (server/supabase/schema.sql for menu_items; supabase/migrations/
- *     0006 and 0005 for devices/bookings), so any of them still existing
- *     would block the final `organizations` delete.
+ * Deletion order matters and has bitten this project multiple times already:
+ *   - `devices`/`bookings`/`menu_items`/`bills`.org_id have no ON DELETE
+ *     CASCADE (server/supabase/schema.sql for menu_items/bills; supabase/
+ *     migrations/0006 and 0005 for devices/bookings), so any of them still
+ *     existing would block the final `organizations` delete.
+ *   - `order_items.menu_item_id` -> `menu_items` also has no cascade, and
+ *     its parent `orders` row doesn't reliably carry `org_id` (e.g. an order
+ *     placed through a space/QR session, or by a self-registered customer,
+ *     can predate/miss the org_id stamp `src/app/api/orders/route.js`
+ *     applies) — confirmed live: this org's menu had `order_items` pointing
+ *     at it from orders with no `org_id` set at all. Scoping the delete by
+ *     `orders.org_id` alone misses those, so the blocking `order_items` are
+ *     found via the `menu_items` they reference instead, and their parent
+ *     `orders` deleted by id (which cascades order_items, order_item_options,
+ *     and any order_messages tied to that order_id).
  *   - `device_commands.issued_by`, `bookings.customer_id`, and
  *     `audit_log.actor_id` all reference `users` with no cascade, so those
  *     rows must be gone *before* deleting `users`, not after — deleting
@@ -30,13 +40,17 @@ import { DEFAULT_ORG, DEFAULT_USERS, DEFAULT_HOTEL_ORG, DEFAULT_HOTEL_USERS } fr
  *     exercised through the actual app (Master Admin actions, IoT commands,
  *     etc. all write audit_log rows) — reseeding is supposed to fully reset
  *     the org, so clearing its own audit trail along with everything else
- *     it owns is correct here, not a loss of real history.
+ *     it owns is correct here, not a loss of real history. Orders/bills are
+ *     the same story: real orders placed against the demo menu through the
+ *     actual app are also "everything the org owns," not history worth
+ *     preserving across a reseed.
  * Everything else an org owns (sites -> spaces -> space_images, wallets ->
- * wallet_transactions, delivery_riders, delivery_zones, device_counters)
- * cascades away automatically once the `organizations` row itself goes.
+ * wallet_transactions, delivery_riders, delivery_zones, device_counters,
+ * ratings -> bills via ON DELETE CASCADE) cascades away automatically once
+ * their owning row goes.
  */
 async function cleanupOrgData(client, { org, userEmails }) {
-  const summary = { devices: 0, bookings: 0, auditLog: 0, menuItems: 0, users: 0, organizations: 0 };
+  const summary = { orders: 0, devices: 0, bookings: 0, bills: 0, auditLog: 0, menuItems: 0, users: 0, organizations: 0 };
 
   const { data: orgRow, error: orgLookupError } = await client
     .from('organizations')
@@ -52,16 +66,36 @@ async function cleanupOrgData(client, { org, userEmails }) {
     await client.from('bills').delete().eq('org_id', orgRow.id);
     await client.from('coupon_redemptions').delete().eq('org_id', orgRow.id);
 
+    // orders.org_id alone isn't a reliable way to find every order that
+    // blocks this org's menu_items: an order placed through a space/QR
+    // session, or by a self-registered customer, can predate/miss the
+    // org_id stamp src/app/api/orders/route.js applies — confirmed live,
+    // this org had order_items pointing at its menu from orders with no
+    // org_id set at all, which left them undeleted here and the menu_items
+    // delete below failing on order_items_menu_item_id_fkey. Resolve the
+    // actual blocking orders through the menu_items they reference instead,
+    // unioned with any org_id-scoped orders that happen to have no items yet.
+    const { data: orgMenuItemRows } = await client.from('menu_items').select('id').eq('org_id', orgRow.id);
+    const orgMenuItemIds = (orgMenuItemRows || []).map((row) => row.id);
+
+    const orderIdsToDelete = new Set();
+    if (orgMenuItemIds.length > 0) {
+      const { data: blockingOrderItems } = await client.from('order_items').select('order_id').in('menu_item_id', orgMenuItemIds);
+      (blockingOrderItems || []).forEach((row) => orderIdsToDelete.add(row.order_id));
+    }
     const { data: orgOrders } = await client.from('orders').select('id').eq('org_id', orgRow.id);
-    if (orgOrders && orgOrders.length > 0) {
-      const orderIds = orgOrders.map((o) => o.id);
+    (orgOrders || []).forEach((row) => orderIdsToDelete.add(row.id));
+
+    if (orderIdsToDelete.size > 0) {
+      const orderIds = [...orderIdsToDelete];
       const { data: orgOrderItems } = await client.from('order_items').select('id').in('order_id', orderIds);
       if (orgOrderItems && orgOrderItems.length > 0) {
         const orderItemIds = orgOrderItems.map((oi) => oi.id);
         await client.from('order_item_options').delete().in('order_item_id', orderItemIds);
       }
       await client.from('order_items').delete().in('order_id', orderIds);
-      await client.from('orders').delete().eq('org_id', orgRow.id);
+      const { count: ordersDeleted } = await client.from('orders').delete({ count: 'exact' }).in('id', orderIds);
+      summary.orders = ordersDeleted || 0;
     }
 
     await client.from('menu_item_recipes').delete().eq('org_id', orgRow.id);
