@@ -27,6 +27,7 @@ const ROLE_GATES = [
   { prefix: '/wallet', roles: ['owner', 'manager'] },
   { prefix: '/rooms', roles: ['owner', 'manager'] },
   { prefix: '/bookings', roles: ['owner', 'manager'] },
+  { prefix: '/rfid-cards', roles: ['owner', 'manager'] },
   { prefix: '/cart', roles: ['customer'] },
   { prefix: '/billing', roles: ['customer'] },
   { prefix: '/smart-ai', roles: ['customer'] },

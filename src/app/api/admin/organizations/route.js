@@ -119,12 +119,16 @@ export async function POST(request) {
 }
 
 // GET /api/admin/organizations — ported from adminController.js's
-// listOrganizations. Master Admin only.
+// listOrganizations. Master Admin, plus Technician (needs the full org
+// list to pick which org they're on-site for — device-pairing and RFID
+// card registration both scope everything to one org at a time). Still
+// master-admin-only to create/edit orgs below.
 export async function GET(request) {
   const auth = requireAuth(request);
   if (auth.error) return auth.error;
-  const roleError = requireMasterAdmin(auth);
-  if (roleError) return roleError;
+  if (!auth.isMasterAdmin && auth.userRole !== 'technician') {
+    return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 });
+  }
 
   try {
     const { data, error } = await supabase.from('organizations').select('*').order('created_at', { ascending: false });

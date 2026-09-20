@@ -19,7 +19,8 @@ import {
   Truck,
   Wallet,
   BedDouble,
-  CalendarRange
+  CalendarRange,
+  CreditCard
 } from 'lucide-react';
 
 // Routed replacement for the old NavTabs.jsx (tab-state onClick/onChange) —
@@ -61,6 +62,7 @@ export default function NavLinks({ authRole, premiseType, badges = {} }) {
         ...(isOwnerOrManager ? [{ href: '/devices', label: 'Devices', icon: Cpu }] : []),
         ...(isOwnerOrManager ? [{ href: '/delivery', label: 'Delivery', icon: Truck }] : []),
         ...(isOwnerOrManager ? [{ href: '/wallet', label: 'Wallet', icon: Wallet }] : []),
+        ...(isOwnerOrManager ? [{ href: '/rfid-cards', label: 'RFID Cards', icon: CreditCard }] : []),
         ...(isOwnerOrManager && isHotel ? [{ href: '/rooms', label: 'Rooms', icon: BedDouble }] : []),
         ...(isOwnerOrManager ? [{ href: '/bookings', label: 'Bookings', icon: CalendarRange }] : []),
         { href: '/chats', label: isOwnerOrManager ? 'Chat Oversight' : 'Customer Chats', icon: MessageCircle },

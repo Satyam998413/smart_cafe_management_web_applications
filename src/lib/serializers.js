@@ -313,6 +313,24 @@ export const serializeDevice = (device) => {
   };
 };
 
+export const serializeRfidCard = (card) => {
+  if (!card) return null;
+  return {
+    id: card.id,
+    orgId: card.org_id,
+    cardNumber: card.card_number,
+    assignedToUserId: card.assigned_to_user_id,
+    spaceId: card.space_id,
+    spaceName: card.space?.name ?? null,
+    status: card.status,
+    accessLevel: card.access_level,
+    validUntil: card.valid_until,
+    createdBy: card.created_by,
+    readerDeviceId: card.reader_device_id,
+    createdAt: card.created_at
+  };
+};
+
 export const serializeWalletTransaction = (tx) => {
   if (!tx) return null;
   return {

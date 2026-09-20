@@ -96,8 +96,8 @@ describe('GET /api/admin/organizations', () => {
     expect(res.status).toBe(401);
   });
 
-  it('rejects a non-master-admin', async () => {
-    const res = await GET(new NextRequest(URL, { headers: authHeader() }));
+  it('rejects a non-master-admin, non-technician role', async () => {
+    const res = await GET(new NextRequest(URL, { headers: authHeader({ role: 'manager' }) }));
     expect(res.status).toBe(403);
   });
 
@@ -109,5 +109,13 @@ describe('GET /api/admin/organizations', () => {
 
     expect(res.status).toBe(200);
     expect(builder.order).toHaveBeenCalledWith('created_at', { ascending: false });
+  });
+
+  it('also allows a technician — they need the full org list to pick who they are on-site for', async () => {
+    const builder = createMockQueryBuilder({ data: [{ id: 'org-1' }], error: null });
+    supabase.from.mockReturnValue(builder);
+
+    const res = await GET(new NextRequest(URL, { headers: authHeader({ role: 'technician' }) }));
+    expect(res.status).toBe(200);
   });
 });

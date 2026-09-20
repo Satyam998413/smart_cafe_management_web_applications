@@ -10,7 +10,7 @@ export default function TechnicianDevicePairingPage() {
   const [pairingData, setPairingData] = useState({ controllers: [], locks: [], punchingDevices: [] });
   const [loading, setLoading] = useState(true);
   const [pairingModal, setPairingModal] = useState(null); // { type, device }
-  const [pairForm, setPairForm] = useState({ wifiSsid: 'SmartCafe-Staff-WiFi', bluetoothMac: 'AA:BB:CC:DD:EE:FF', rssiSignalStrength: -45, spaceId: '' });
+  const [pairForm, setPairForm] = useState({ wifiSsid: 'SmartCafe-Staff-WiFi', bluetoothMac: 'AA:BB:CC:DD:EE:FF', mobileBleRssi: -45, mobileWifiRssi: -45, spaceId: '' });
 
   useEffect(() => {
     fetchOrgs();
@@ -188,13 +188,25 @@ export default function TechnicianDevicePairingPage() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">RSSI Signal Strength (dBm): {pairForm.rssiSignalStrength} dBm</label>
+                <label className="text-xs text-slate-400 block mb-1">Device ↔ Mobile Signal (dBm): {pairForm.mobileBleRssi} dBm</label>
                 <input
                   type="range"
                   min="-95"
                   max="-30"
-                  value={pairForm.rssiSignalStrength}
-                  onChange={(e) => setPairForm({ ...pairForm, rssiSignalStrength: parseInt(e.target.value, 10) })}
+                  value={pairForm.mobileBleRssi}
+                  onChange={(e) => setPairForm({ ...pairForm, mobileBleRssi: parseInt(e.target.value, 10) })}
+                  className="w-full accent-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Mobile ↔ Router Signal (dBm): {pairForm.mobileWifiRssi} dBm</label>
+                <input
+                  type="range"
+                  min="-95"
+                  max="-30"
+                  value={pairForm.mobileWifiRssi}
+                  onChange={(e) => setPairForm({ ...pairForm, mobileWifiRssi: parseInt(e.target.value, 10) })}
                   className="w-full accent-indigo-500"
                 />
               </div>
