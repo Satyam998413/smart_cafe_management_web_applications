@@ -129,7 +129,7 @@ export default function SmartLocksPage() {
                   </div>
 
                   <h3 className="text-lg font-bold text-white mb-1">{lock.lock_name}</h3>
-                  <p className="text-xs text-slate-400 mb-4">{lock.space?.name || 'Unassigned Room/Entry'}</p>
+                  <p className="text-xs text-slate-400 mb-4">{lock.space?.label || 'Unassigned Room/Entry'}</p>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 flex items-center justify-between">

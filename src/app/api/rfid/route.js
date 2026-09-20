@@ -26,7 +26,11 @@ export async function GET(request) {
 
     const { data, error } = await supabase
       .from('rfid_cards')
-      .select('*, space:spaces(name)')
+      // spaces' display column is `label`, not `name` — caught via
+      // end-to-end testing (PostgREST error 42703). This exact mistake was
+      // already present elsewhere in the codebase (locks/route.js,
+      // device-pairing/route.js) before this route existed.
+      .select('*, space:spaces(label)')
       .eq('org_id', targetOrgId)
       .order('created_at', { ascending: false });
     if (error) throw error;

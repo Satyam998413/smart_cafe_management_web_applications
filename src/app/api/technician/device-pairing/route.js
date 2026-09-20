@@ -28,9 +28,25 @@ export async function GET(request) {
       return NextResponse.json({ message: 'orgId is required' }, { status: 400 });
     }
 
-    const { data: devices } = await supabase.from('devices').select('*, space:spaces(name)').eq('org_id', targetOrgId);
-    const { data: locks } = await supabase.from('smart_locks').select('*, space:spaces(name)').eq('org_id', targetOrgId);
-    const { data: punching } = await supabase.from('punching_devices').select('*').eq('org_id', targetOrgId);
+    // spaces' display column is `label`, not `name` — this used the wrong
+    // column name until caught via end-to-end testing. Also now actually
+    // checks `error` on each query: previously only `data` was destructured,
+    // so this embed silently failing (data undefined -> `|| []`) always
+    // masked itself as "no devices" instead of the real Postgres error.
+    const { data: devices, error: devicesError } = await supabase
+      .from('devices')
+      .select('*, space:spaces(label)')
+      .eq('org_id', targetOrgId);
+    if (devicesError) throw devicesError;
+
+    const { data: locks, error: locksError } = await supabase
+      .from('smart_locks')
+      .select('*, space:spaces(label)')
+      .eq('org_id', targetOrgId);
+    if (locksError) throw locksError;
+
+    const { data: punching, error: punchingError } = await supabase.from('punching_devices').select('*').eq('org_id', targetOrgId);
+    if (punchingError) throw punchingError;
 
     return NextResponse.json({
       controllers: devices || [],

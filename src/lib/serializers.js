@@ -321,7 +321,9 @@ export const serializeRfidCard = (card) => {
     cardNumber: card.card_number,
     assignedToUserId: card.assigned_to_user_id,
     spaceId: card.space_id,
-    spaceName: card.space?.name ?? null,
+    // spaces' display column is `label`, not `name` — see the embed fix
+    // note in rfid/route.js's own comment for the wider bug this matched.
+    spaceName: card.space?.label ?? null,
     status: card.status,
     accessLevel: card.access_level,
     validUntil: card.valid_until,

@@ -16,9 +16,12 @@ export async function GET(request) {
       return NextResponse.json({ message: 'orgId required' }, { status: 400 });
     }
 
+    // spaces' display column is `label`, not `name` — this was 500ing for
+    // any org with a smart lock actually assigned to a space, caught via
+    // end-to-end testing of the (structurally identical) RFID cards route.
     const { data, error } = await supabase
       .from('smart_locks')
-      .select('*, space:spaces(name)')
+      .select('*, space:spaces(label)')
       .eq('org_id', targetOrgId)
       .order('created_at', { ascending: false });
 

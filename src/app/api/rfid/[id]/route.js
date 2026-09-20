@@ -46,7 +46,7 @@ export async function PATCH(request, { params }) {
     let query = supabase.from('rfid_cards').update(updateData).eq('id', id);
     if (!auth.isMasterAdmin) query = query.eq('org_id', auth.orgId);
 
-    const { data, error } = await query.select('*, space:spaces(name)').single();
+    const { data, error } = await query.select('*, space:spaces(label)').single();
     if (error) throw error;
     if (!data) {
       return NextResponse.json({ message: 'RFID card not found' }, { status: 404 });

@@ -140,7 +140,7 @@ export default function TechnicianDevicePairingPage() {
                       </span>
                     </div>
                     <h3 className="font-bold text-white text-base mb-1">{lock.lock_name}</h3>
-                    <p className="text-xs text-slate-400 mb-3">Space: {lock.space?.name || 'Unassigned'}</p>
+                    <p className="text-xs text-slate-400 mb-3">Space: {lock.space?.label || 'Unassigned'}</p>
                   </div>
 
                   <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
