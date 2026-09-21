@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, Bluetooth, Signal, Cpu, Lock, Fingerprint, CheckCircle2, RefreshCw, MapPin } from 'lucide-react';
+import DeviceStatusBadge from '@/components/DeviceStatusBadge.jsx';
+import { useDeviceStatusSocket } from '@/lib/useDeviceStatusSocket.js';
 
 export default function TechnicianDevicePairingPage() {
+  const { heartbeats } = useDeviceStatusSocket();
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
   const [pairingData, setPairingData] = useState({ controllers: [], locks: [], punchingDevices: [] });
@@ -134,9 +137,12 @@ export default function TechnicianDevicePairingPage() {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">{lock.lock_type?.replace('_', ' ')}</span>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-mono border ${getSignalColor(lock.rssi_signal_strength || -50)}`}>
+                      <DeviceStatusBadge lastHeartbeatAt={heartbeats[lock.id] ?? lock.last_heartbeat_at} />
+                    </div>
+                    <div className="flex justify-end mb-2">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-mono border ${getSignalColor(lock.device_wifi_rssi ?? -50)}`}>
                         <Signal className="w-3 h-3 inline mr-1" />
-                        {lock.rssi_signal_strength || -50} dBm
+                        {lock.device_wifi_rssi ?? '—'} dBm
                       </span>
                     </div>
                     <h3 className="font-bold text-white text-base mb-1">{lock.lock_name}</h3>

@@ -20,7 +20,12 @@ import {
   Wallet,
   BedDouble,
   CalendarRange,
-  CreditCard
+  CreditCard,
+  DoorClosed,
+  Fingerprint,
+  UserCheck,
+  ShieldCheck,
+  BookOpen
 } from 'lucide-react';
 
 // Routed replacement for the old NavTabs.jsx (tab-state onClick/onChange) —
@@ -63,6 +68,11 @@ export default function NavLinks({ authRole, premiseType, badges = {} }) {
         ...(isOwnerOrManager ? [{ href: '/delivery', label: 'Delivery', icon: Truck }] : []),
         ...(isOwnerOrManager ? [{ href: '/wallet', label: 'Wallet', icon: Wallet }] : []),
         ...(isOwnerOrManager ? [{ href: '/rfid-cards', label: 'RFID Cards', icon: CreditCard }] : []),
+        ...(isOwnerOrManager ? [{ href: '/locks', label: 'Smart Locks', icon: DoorClosed }] : []),
+        ...(isOwnerOrManager ? [{ href: '/biometric-captures', label: 'Biometric Enrollment', icon: Fingerprint }] : []),
+        ...(isOwnerOrManager ? [{ href: '/access-history', label: 'Access History Log', icon: ShieldCheck }] : []),
+        ...(isOwnerOrManager ? [{ href: '/attendance', label: 'Attendance', icon: UserCheck }] : []),
+        ...(isOwnerOrManager ? [{ href: '/mqtt-docs', label: 'MQTT Documentation', icon: BookOpen }] : []),
         ...(isOwnerOrManager && isHotel ? [{ href: '/rooms', label: 'Rooms', icon: BedDouble }] : []),
         ...(isOwnerOrManager ? [{ href: '/bookings', label: 'Bookings', icon: CalendarRange }] : []),
         { href: '/chats', label: isOwnerOrManager ? 'Chat Oversight' : 'Customer Chats', icon: MessageCircle },

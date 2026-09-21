@@ -1,6 +1,8 @@
 // Shared by the /api/staff route handlers — ported from
 // server/src/controllers/staffController.js's module-level constant and
 // canResetPassword helper.
+import bcrypt from 'bcryptjs';
+import supabase from './supabaseClient.js';
 
 // waiter joined manager/cook once its schema check-constraint value existed
 // (Phase 0). owner is deliberately NOT creatable through this endpoint —
@@ -39,3 +41,29 @@ export const canResetPassword = ({ isMasterAdmin, actorRole, actorOrgId, actorPe
   }
   return false;
 };
+
+/**
+ * The actual insert logic behind POST /api/staff, pulled out so
+ * src/app/api/biometrics/captures/[id]/assign/route.js can create a brand
+ * new user inline (the "or create users and assign" flow) without an
+ * internal HTTP call to another route. Throws a Postgres error with
+ * code '23505' on a duplicate email/phone — callers translate that to a
+ * 409, same as /api/staff does today.
+ */
+export async function createStaffAccount({ orgId, name, email, phone, password, role, spaceId }) {
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      name,
+      email: email || null,
+      phone: phone || null,
+      role,
+      password_hash: bcrypt.hashSync(password, SALT_ROUNDS),
+      space_id: spaceId || null,
+      ...(orgId ? { org_id: orgId } : {})
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}

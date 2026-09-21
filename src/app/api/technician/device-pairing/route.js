@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { requireAuth } from '@/lib/auth.js';
+import { withOnlineStatus } from '@/lib/deviceStatus.js';
 
 // Shared -100..0 dBm -> label scale for both mobile-side signal
 // readings taken during pairing (device<->mobile BLE, mobile<->router
@@ -49,9 +50,9 @@ export async function GET(request) {
     if (punchingError) throw punchingError;
 
     return NextResponse.json({
-      controllers: devices || [],
-      locks: locks || [],
-      punchingDevices: punching || []
+      controllers: withOnlineStatus(devices || []),
+      locks: withOnlineStatus(locks || []),
+      punchingDevices: withOnlineStatus(punching || [])
     });
   } catch (error) {
     logger.error('Failed to fetch device pairing data', { error: error.message });

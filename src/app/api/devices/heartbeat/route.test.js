@@ -35,25 +35,32 @@ describe('POST /api/devices/heartbeat', () => {
     expect(res.status).toBe(403);
   });
 
-  it('rejects wifiRssi missing/non-numeric', async () => {
-    const token = mintDeviceToken({ deviceId: 'd1', orgId: 'org-1', category: 'controller' });
-    const { hashDeviceToken } = await import('@/lib/deviceAuth.js');
-    supabase.from.mockReturnValue(
-      createMockQueryBuilder({ data: { id: 'd1', org_id: 'org-1', refresh_token_hash: hashDeviceToken(token) }, error: null })
-    );
-
-    const res = await POST(request({}, deviceHeader(token)));
-    expect(res.status).toBe(400);
-  });
-
-  it('records the device-reported Wi-Fi RSSI when the token hash matches', async () => {
+  it('records a bare liveness ping with no wifiRssi (the routine ~30s heartbeat)', async () => {
     const token = mintDeviceToken({ deviceId: 'd1', orgId: 'org-1', category: 'controller' });
     const { hashDeviceToken } = await import('@/lib/deviceAuth.js');
     const lookupBuilder = createMockQueryBuilder({
       data: { id: 'd1', org_id: 'org-1', refresh_token_hash: hashDeviceToken(token) },
       error: null
     });
-    const updateBuilder = createMockQueryBuilder({ data: null, error: null });
+    const updateBuilder = createMockQueryBuilder({ data: { id: 'd1', last_heartbeat_at: '2026-01-01T00:00:00.000Z' }, error: null });
+    supabase.from.mockReturnValueOnce(lookupBuilder).mockReturnValueOnce(updateBuilder);
+
+    const res = await POST(request({}, deviceHeader(token)));
+    expect(res.status).toBe(200);
+    expect(updateBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ last_heartbeat_at: expect.any(String) })
+    );
+    expect(updateBuilder.update).not.toHaveBeenCalledWith(expect.objectContaining({ device_wifi_rssi: expect.anything() }));
+  });
+
+  it('records the device-reported Wi-Fi RSSI alongside the heartbeat when the token hash matches', async () => {
+    const token = mintDeviceToken({ deviceId: 'd1', orgId: 'org-1', category: 'controller' });
+    const { hashDeviceToken } = await import('@/lib/deviceAuth.js');
+    const lookupBuilder = createMockQueryBuilder({
+      data: { id: 'd1', org_id: 'org-1', refresh_token_hash: hashDeviceToken(token) },
+      error: null
+    });
+    const updateBuilder = createMockQueryBuilder({ data: { id: 'd1', last_heartbeat_at: '2026-01-01T00:00:00.000Z' }, error: null });
     supabase.from.mockReturnValueOnce(lookupBuilder).mockReturnValueOnce(updateBuilder);
 
     const res = await POST(request({ wifiRssi: -58 }, deviceHeader(token)));
@@ -61,7 +68,7 @@ describe('POST /api/devices/heartbeat', () => {
     expect(res.status).toBe(200);
     expect(supabase.from).toHaveBeenCalledWith('devices');
     expect(updateBuilder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ device_wifi_rssi: -58 })
+      expect.objectContaining({ device_wifi_rssi: -58, last_heartbeat_at: expect.any(String) })
     );
   });
 });

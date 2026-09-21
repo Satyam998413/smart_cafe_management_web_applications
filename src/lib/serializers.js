@@ -309,7 +309,12 @@ export const serializeDevice = (device) => {
     posX: toNumber(device.pos_x),
     posY: toNumber(device.pos_y),
     state: deviceState?.state ?? {},
-    stateUpdatedAt: deviceState?.updated_at ?? null
+    stateUpdatedAt: deviceState?.updated_at ?? null,
+    // Populated by withOnlineStatus() (src/lib/deviceStatus.js) before this
+    // serializer runs — undefined here just means the caller didn't attach
+    // it, not that the device is offline, so this only ever forwards it.
+    online: device.online,
+    lastHeartbeatAt: device.last_heartbeat_at ?? null
   };
 };
 

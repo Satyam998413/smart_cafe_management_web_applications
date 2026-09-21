@@ -51,6 +51,12 @@ export function initOrderSocket(io) {
     // an Owner session never received them. Found while wiring up the
     // Owner-visible Pending Cash Bills tab, which depends on this event.
     if (socket.userRole === 'owner') socket.join('role-owner');
+    // Technicians watch device_status/access_event pushes on the
+    // device-pairing and locks/attendance dashboards — without this room,
+    // deviceEvents.js's emitToRooms(['role-manager','role-owner',
+    // 'role-technician'], ...) would silently have no technician listener,
+    // same class of bug the role-owner comment above already documents.
+    if (socket.userRole === 'technician') socket.join('role-technician');
 
     // customerId is the chat thread's identity (one persistent thread per
     // customer, not per order).

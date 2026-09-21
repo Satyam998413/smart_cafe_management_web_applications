@@ -4,6 +4,7 @@ import logger from '@/lib/logger.js';
 import { serializeDevice } from '@/lib/serializers.js';
 import { scopeToOrg } from '@/lib/tenantScope.js';
 import { requireAuth, requireRole } from '@/lib/auth.js';
+import { withOnlineStatus } from '@/lib/deviceStatus.js';
 
 // GET /api/iot-devices?spaceId= — ported from iotDeviceController.js's
 // listDevices. Owner or Manager. Devices + their last known state (plan
@@ -25,7 +26,7 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json(data.map(serializeDevice));
+    return NextResponse.json(withOnlineStatus(data).map(serializeDevice));
   } catch (error) {
     logger.error('Failed to list IoT devices', { error: error.message });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });

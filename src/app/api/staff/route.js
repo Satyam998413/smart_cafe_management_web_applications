@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { serializeUser } from '@/lib/serializers.js';
 import { scopeToOrg } from '@/lib/tenantScope.js';
 import { requireAuth, requireRole } from '@/lib/auth.js';
-import { STAFF_ROLES, SALT_ROUNDS } from '@/lib/staffHelpers.js';
+import { STAFF_ROLES, createStaffAccount } from '@/lib/staffHelpers.js';
 
 // GET /api/staff — ported from staffController.js's listStaff. Lists every
 // manager/cook/waiter account in the caller's org.
@@ -128,28 +127,12 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Email or phone number is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
-        name,
-        email: email || null,
-        phone: phone || null,
-        role,
-        password_hash: bcrypt.hashSync(password, SALT_ROUNDS),
-        space_id: spaceId || null,
-        ...(auth.orgId ? { org_id: auth.orgId } : {})
-      })
-      .select('*')
-      .single();
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json({ message: 'That email or phone is already in use.' }, { status: 409 });
-      }
-      throw error;
-    }
-
+    const data = await createStaffAccount({ orgId: auth.orgId, name, email, phone, password, role, spaceId });
     return NextResponse.json(serializeUser(data), { status: 201 });
   } catch (error) {
+    if (error.code === '23505') {
+      return NextResponse.json({ message: 'That email or phone is already in use.' }, { status: 409 });
+    }
     logger.error('Failed to create staff account', { error: error.message });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }

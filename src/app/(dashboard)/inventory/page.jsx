@@ -102,6 +102,12 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <a
+            href="/warehouse"
+            className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-300 font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer text-sm shadow-md"
+          >
+            <Layers className="w-4 h-4 text-emerald-400" /> Open Warehouse Racks Grid (WMS)
+          </a>
           <button
             onClick={() => setShowAddItemModal(true)}
             className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-medium px-4 py-2.5 rounded-xl transition-colors cursor-pointer text-sm"

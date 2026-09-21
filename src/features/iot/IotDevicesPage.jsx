@@ -68,6 +68,7 @@ export default function IotDevicesPage({ apiFetch, authRole }) {
 
   const [regName, setRegName] = useState('');
   const [regType, setRegType] = useState('lamp');
+  const [regTransport, setRegTransport] = useState('mqtt');
   const [regQuantity, setRegQuantity] = useState(1);
   const [regBusy, setRegBusy] = useState(false);
   const [regError, setRegError] = useState('');
@@ -160,7 +161,7 @@ export default function IotDevicesPage({ apiFetch, authRole }) {
     try {
       const res = await apiFetch('/iot-devices', {
         method: 'POST',
-        ...jsonBody({ spaceId, name: regName.trim(), type: regType, capabilities: ['on_off'], quantity: regQuantity })
+        ...jsonBody({ spaceId, name: regName.trim(), type: regType, transport_type: regTransport, capabilities: ['on_off'], quantity: regQuantity })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to register device');
@@ -424,6 +425,13 @@ export default function IotDevicesPage({ apiFetch, authRole }) {
                       {t.label}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div style={{ minWidth: 140 }}>
+                <label className="field-label">Protocol</label>
+                <select className="field-input" value={regTransport} onChange={(e) => setRegTransport(e.target.value)}>
+                  <option value="mqtt">MQTT Broker</option>
+                  <option value="api">HTTP API</option>
                 </select>
               </div>
               <div style={{ width: 100 }}>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabaseClient.js';
 import logger from '@/lib/logger.js';
 import { requireAuth } from '@/lib/auth.js';
+import { withOnlineStatus } from '@/lib/deviceStatus.js';
 
 // GET /api/locks?orgId=...
 export async function GET(request) {
@@ -26,7 +27,7 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return NextResponse.json(data || []);
+    return NextResponse.json(withOnlineStatus(data || []));
   } catch (error) {
     logger.error('Failed to list smart locks', { error: error.message });
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
