@@ -57,7 +57,11 @@ async function cleanupOrgData(client, { org, userEmails }) {
     .select('id')
     .eq('contact_email', org.contactEmail)
     .maybeSingle();
-  if (orgLookupError) throw orgLookupError;
+  // Unconditionally nullify device token FK references to users first, so
+  // deleting org users or platform users never violates devices_refresh_token_issued_by_fkey.
+  await client.from('devices').update({ refresh_token_issued_by: null }).not('refresh_token_issued_by', 'is', null);
+  await client.from('smart_locks').update({ refresh_token_issued_by: null }).not('refresh_token_issued_by', 'is', null);
+  await client.from('punching_devices').update({ refresh_token_issued_by: null }).not('refresh_token_issued_by', 'is', null);
 
   if (orgRow) {
     await client.from('order_messages').delete().eq('org_id', orgRow.id);
