@@ -430,3 +430,56 @@ export const DEFAULT_HARDWARE_PRODUCTS = [
     image_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop'
   }
 ];
+
+export const DEFAULT_INVENTORY_ITEMS = [
+  { name: 'Fresh Milk', category: 'Dairy', unit: 'liters', current_stock: 50.0, min_stock_alert: 10.0, cost_per_unit: 60.0 },
+  { name: 'Coffee Beans (Arabica)', category: 'Beverages', unit: 'kg', current_stock: 25.0, min_stock_alert: 5.0, cost_per_unit: 850.0 },
+  { name: 'White Sugar', category: 'Pantry', unit: 'kg', current_stock: 30.0, min_stock_alert: 5.0, cost_per_unit: 45.0 },
+  { name: 'Mozzarella Cheese', category: 'Dairy', unit: 'kg', current_stock: 15.0, min_stock_alert: 3.0, cost_per_unit: 420.0 },
+  { name: 'All-Purpose Flour', category: 'Pantry', unit: 'kg', current_stock: 40.0, min_stock_alert: 8.0, cost_per_unit: 55.0 },
+  { name: 'Unsalted Butter', category: 'Dairy', unit: 'kg', current_stock: 12.0, min_stock_alert: 2.0, cost_per_unit: 480.0 },
+  { name: 'Fresh Tomatoes', category: 'Produce', unit: 'kg', current_stock: 20.0, min_stock_alert: 4.0, cost_per_unit: 35.0 },
+  { name: 'Chicken Breast', category: 'Meat', unit: 'kg', current_stock: 18.0, min_stock_alert: 5.0, cost_per_unit: 280.0 }
+];
+
+export const DEFAULT_SMART_LOCKS = [
+  { lock_name: 'Manager Office Lock', mac_address: 'AA:BB:CC:11:22:33', ip_address: '192.168.1.180', lock_type: 'rfid_wifi', battery_level: 92 },
+  { lock_name: 'Kitchen Pantry Storage Lock', mac_address: 'AA:BB:CC:11:22:44', ip_address: '192.168.1.181', lock_type: 'keypad_wifi', battery_level: 85 },
+  { lock_name: 'VIP Executive Lounge Door', mac_address: 'AA:BB:CC:11:22:55', ip_address: '192.168.1.182', lock_type: 'biometric_lock', battery_level: 98 }
+];
+
+export const DEFAULT_RFID_CARDS = [
+  { card_number: 'RFID-1001-MGR', access_level: 'admin', status: 'active' },
+  { card_number: 'RFID-1002-COOK', access_level: 'staff', status: 'active' },
+  { card_number: 'RFID-1003-WAIT', access_level: 'staff', status: 'active' }
+];
+
+export const DEFAULT_PUNCHING_DEVICES = [
+  { device_name: 'Main Staff Entrance Biometric Scanner', device_type: 'hybrid_biometric', ip_address: '192.168.1.150', serial_number: 'SN-BIO-9001', status: 'online' },
+  { device_name: 'Kitchen Staff Punching Terminal', device_type: 'rfid_reader', ip_address: '192.168.1.151', serial_number: 'SN-RFID-9002', status: 'online' }
+];
+
+export const DEFAULT_SUPPORT_TICKETS = [
+  {
+    title: 'POS Kitchen Printer Connection Error',
+    category: 'billing',
+    urgency: 'high',
+    description: 'The kitchen POS thermal receipt printer fails to print order tickets automatically during peak lunch hour.',
+    status: 'in_progress'
+  },
+  {
+    title: 'Smart Lock Low Battery Notification',
+    category: 'smart_lock',
+    urgency: 'medium',
+    description: 'Pantry lock battery dropped below 15% threshold; requires battery replacement and log sync.',
+    status: 'assigned'
+  },
+  {
+    title: 'Staff Biometric Attendance Reader Offline',
+    category: 'punching_system',
+    urgency: 'critical',
+    description: 'Main entrance biometric reader lost Wi-Fi connection and is buffering offline punches locally.',
+    status: 'open'
+  }
+];
+

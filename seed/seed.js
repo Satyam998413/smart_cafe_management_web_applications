@@ -21,7 +21,12 @@ import {
   DEFAULT_HOTEL_USERS,
   DEFAULT_HOTEL_WALLET,
   DEFAULT_BOOKINGS,
-  DEFAULT_HARDWARE_PRODUCTS
+  DEFAULT_HARDWARE_PRODUCTS,
+  DEFAULT_INVENTORY_ITEMS,
+  DEFAULT_SMART_LOCKS,
+  DEFAULT_RFID_CARDS,
+  DEFAULT_PUNCHING_DEVICES,
+  DEFAULT_SUPPORT_TICKETS
 } from './constants.js';
 
 const insertOne = async (client, table, row, select = '*') => {
@@ -459,6 +464,188 @@ async function seedHardwareCatalog(client) {
   return [];
 }
 
+async function seedOrganizationServices(client, orgId) {
+  const { error } = await client.from('organization_services').upsert(
+    {
+      org_id: orgId,
+      iot_enabled: true,
+      inventory_enabled: true,
+      billing_connector_enabled: true,
+      smart_locks_enabled: true,
+      punching_system_enabled: true
+    },
+    { onConflict: 'org_id' }
+  );
+  if (error) console.warn('Organization services seed warning:', error.message);
+}
+
+async function seedInventoryAndWarehouse(client, orgId, siteId, savedMenuItems) {
+  const inventoryRows = DEFAULT_INVENTORY_ITEMS.map((item) => ({ ...item, org_id: orgId }));
+  const savedInventory = await insertMany(client, 'inventory_items', inventoryRows, 'id, name');
+
+  if (savedInventory.length > 0) {
+    const batchRows = savedInventory.map((item, idx) => ({
+      item_id: item.id,
+      org_id: orgId,
+      batch_number: `BATCH-2026-00${idx + 1}`,
+      quantity_received: 100.0,
+      quantity_remaining: 80.0,
+      purchase_date: '2026-09-01',
+      expiry_date: '2026-12-31',
+      supplier_name: 'Metro Wholesale Supply Ltd'
+    }));
+    await insertMany(client, 'inventory_batches', batchRows, 'id');
+
+    // Seed menu recipes for a few menu items
+    const cappuccino = savedMenuItems.find((m) => m.name.toLowerCase().includes('cappuccino'));
+    const coffeeBeans = savedInventory.find((i) => i.name.toLowerCase().includes('coffee'));
+    const milk = savedInventory.find((i) => i.name.toLowerCase().includes('milk'));
+
+    if (cappuccino && coffeeBeans && milk) {
+      await insertMany(
+        client,
+        'menu_item_recipes',
+        [
+          { org_id: orgId, menu_item_id: cappuccino.id, inventory_item_id: coffeeBeans.id, required_quantity: 0.018 },
+          { org_id: orgId, menu_item_id: cappuccino.id, inventory_item_id: milk.id, required_quantity: 0.15 }
+        ],
+        'id'
+      );
+    }
+
+    // Seed warehouse room, rack, and boxes
+    const room = await insertOne(client, 'warehouse_rooms', {
+      org_id: orgId,
+      site_id: siteId,
+      name: 'Main Storage & Cold Pantry Room',
+      code: 'WMS-ROOM-1',
+      description: 'Primary warehouse storage room for dry stock, beverages, and dairy refrigeration.'
+    });
+
+    const rack = await insertOne(client, 'warehouse_racks', {
+      org_id: orgId,
+      room_id: room.id,
+      rack_code: 'RCK-A1',
+      name: 'Rack A — Perishables & Dry Ingredients',
+      total_rows: 4,
+      total_cols: 4,
+      row_labels: ['A', 'B', 'C', 'D'],
+      col_labels: ['1', '2', '3', '4']
+    });
+
+    const boxRows = [];
+    let boxIdx = 1;
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        const item = savedInventory[(r * 4 + c) % savedInventory.length];
+        boxRows.push({
+          org_id: orgId,
+          rack_id: rack.id,
+          box_unique_id: `BOX-WMS-${String(boxIdx).padStart(3, '0')}`,
+          row_index: r,
+          col_index: c,
+          row_label: String.fromCharCode(65 + r),
+          col_label: String(c + 1),
+          max_capacity: 100,
+          current_quantity: 45,
+          unit: 'counts',
+          item_id: item.id,
+          status_color: boxIdx % 3 === 0 ? 'orange' : (boxIdx % 2 === 0 ? 'green' : 'gray')
+        });
+        boxIdx++;
+      }
+    }
+    await insertMany(client, 'warehouse_boxes', boxRows, 'id');
+  }
+
+  return { inventoryCount: savedInventory.length };
+}
+
+async function seedSmartLocksAndPunching(client, orgId, siteId, users) {
+  const manager = users.find((u) => u.role === 'manager');
+  const cook = users.find((u) => u.role === 'cook');
+  const waiter = users.find((u) => u.role === 'waiter');
+
+  // Smart locks
+  const lockRows = DEFAULT_SMART_LOCKS.map((lock) => ({ ...lock, org_id: orgId }));
+  const savedLocks = await insertMany(client, 'smart_locks', lockRows, 'id, lock_name');
+
+  // RFID cards
+  const rfidRows = DEFAULT_RFID_CARDS.map((card, i) => {
+    const assignedUser = i === 0 ? manager : (i === 1 ? cook : waiter);
+    return { ...card, org_id: orgId, assigned_to_user_id: assignedUser?.id || null };
+  });
+  await insertMany(client, 'rfid_cards', rfidRows, 'id');
+
+  // Punching devices
+  const punchRows = DEFAULT_PUNCHING_DEVICES.map((dev) => ({ ...dev, org_id: orgId, site_id: siteId }));
+  const savedPunching = await insertMany(client, 'punching_devices', punchRows, 'id, device_name');
+
+  // Attendance logs
+  if (manager && savedPunching.length > 0) {
+    const attendanceRows = [
+      {
+        org_id: orgId,
+        user_id: manager.id,
+        device_id: savedPunching[0].id,
+        verification_method: 'rfid',
+        punch_type: 'in',
+        timestamp: new Date().toISOString(),
+        remarks: 'On-time morning shift check-in'
+      }
+    ];
+    if (cook) {
+      attendanceRows.push({
+        org_id: orgId,
+        user_id: cook.id,
+        device_id: savedPunching[0].id,
+        verification_method: 'thumbprint',
+        punch_type: 'in',
+        timestamp: new Date().toISOString(),
+        remarks: 'Kitchen shift start punch'
+      });
+    }
+    await insertMany(client, 'attendance_logs', attendanceRows, 'id');
+  }
+
+  return { lockCount: savedLocks.length, punchingCount: savedPunching.length };
+}
+
+async function seedSupportTickets(client, orgId, users) {
+  const manager = users.find((u) => u.role === 'manager');
+  const technician = users.find((u) => u.role === 'technician');
+
+  if (!manager) return { ticketCount: 0 };
+
+  const ticketRows = DEFAULT_SUPPORT_TICKETS.map((t) => ({
+    org_id: orgId,
+    created_by: manager.id,
+    title: t.title,
+    category: t.category,
+    urgency: t.urgency,
+    description: t.description,
+    status: t.status,
+    assigned_technician_id: t.status !== 'open' ? technician?.id || null : null
+  }));
+  const savedTickets = await insertMany(client, 'support_tickets', ticketRows, 'id, title');
+
+  if (savedTickets.length > 0 && manager) {
+    const historyRows = savedTickets.flatMap((ticket) => [
+      {
+        ticket_id: ticket.id,
+        actor_id: manager.id,
+        actor_role: 'manager',
+        previous_status: null,
+        new_status: 'open',
+        remarks: 'Support ticket submitted by manager.'
+      }
+    ]);
+    await insertMany(client, 'support_ticket_history', historyRows, 'id');
+  }
+
+  return { ticketCount: savedTickets.length };
+}
+
 async function main() {
   const client = getAdminClient();
 
@@ -473,7 +660,22 @@ async function main() {
   const { site, tables } = await seedSiteAndSpaces(client, org.id);
 
   console.log('Creating default users...');
-  await seedUsers(client, org.id);
+  const createdUsers = await seedUsers(client, org.id);
+
+  console.log('Creating default menu...');
+  const { savedMenuItems: menuItems, optionGroupCount, optionChoiceCount } = await seedMenu(client, org.id);
+
+  console.log('Enabling organization services & feature flags...');
+  await seedOrganizationServices(client, org.id);
+
+  console.log('Creating default inventory, WMS racks, shelf boxes, and recipes...');
+  const { inventoryCount } = await seedInventoryAndWarehouse(client, org.id, site.id, menuItems);
+
+  console.log('Creating smart locks, RFID cards, punching devices & attendance logs...');
+  const { lockCount, punchingCount } = await seedSmartLocksAndPunching(client, org.id, site.id, createdUsers);
+
+  console.log('Creating support & maintenance tickets...');
+  const { ticketCount } = await seedSupportTickets(client, org.id, createdUsers);
 
   console.log('Creating default wallet...');
   await seedWallet(client, org.id);
@@ -482,10 +684,7 @@ async function main() {
   await seedCoinPlans(client);
 
   console.log('Upserting default hardware products (RFID, Wi-Fi Switches, Smart Locks, Punching Systems)...');
-  const hardwareItems = await seedHardwareCatalog(client);
-
-  console.log('Creating default menu...');
-  const { savedMenuItems, optionGroupCount, optionChoiceCount } = await seedMenu(client, org.id);
+  await seedHardwareCatalog(client);
 
   console.log('Creating hotel organization...');
   const hotelOrg = await seedHotelOrganization(client);
@@ -508,7 +707,10 @@ async function main() {
   console.log('\nSeed complete.');
   console.log(`  Organization : ${org.name} (${org.id})`);
   console.log(`  Site         : ${site.name} — ${tables.length} tables`);
-  console.log(`  Menu         : ${savedMenuItems.length} items, ${optionGroupCount} option groups, ${optionChoiceCount} choices`);
+  console.log(`  Menu         : ${menuItems.length} items, ${optionGroupCount} option groups, ${optionChoiceCount} choices`);
+  console.log(`  Inventory    : ${inventoryCount} items with WMS room, racks & shelf boxes`);
+  console.log(`  Access Control: ${lockCount} smart locks, ${punchingCount} punching kiosks, RFID cards & attendance logs`);
+  console.log(`  Support      : ${ticketCount} maintenance/support tickets & history logs`);
   console.log(`\n  Hotel org    : ${hotelOrg.name} (${hotelOrg.id})`);
   console.log(`  Hotel site   : ${hotelSite.name} — ${DEFAULT_HOTEL_FLOORS.length} floors, ${rooms.length} rooms, ${imageCount} photos`);
   console.log(`  Equipment    : ${deviceCount} devices, ${stateCount} with an initial on/off state`);

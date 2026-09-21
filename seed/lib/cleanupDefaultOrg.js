@@ -139,6 +139,16 @@ async function cleanupOrgData(client, { org, userEmails }) {
   // case, leave the existing row in place (seed.js's seedUsers skips
   // re-inserting an email that already exists) rather than aborting the
   // whole reseed over an account this function was never meant to touch.
+  // Nullify any device refresh_token_issued_by or hardware order/support ticket
+  // FK references to seed users so deleting user rows does not hit FK constraints.
+  const { data: seedUserRows } = await client.from('users').select('id').in('email', userEmails);
+  if (seedUserRows && seedUserRows.length > 0) {
+    const seedUserIds = seedUserRows.map((u) => u.id);
+    await client.from('devices').update({ refresh_token_issued_by: null }).in('refresh_token_issued_by', seedUserIds);
+    await client.from('smart_locks').update({ refresh_token_issued_by: null }).in('refresh_token_issued_by', seedUserIds);
+    await client.from('punching_devices').update({ refresh_token_issued_by: null }).in('refresh_token_issued_by', seedUserIds);
+  }
+
   const { count: platformUsersDeleted, error: platformUsersError } = await client
     .from('users')
     .delete({ count: 'exact' })
