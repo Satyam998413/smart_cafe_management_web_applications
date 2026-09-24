@@ -720,6 +720,8 @@ export default function MqttDocsPage() {
             </div>
           </div>
         </div>
+      )}
+
       {/* TAB 4: DEVICE STATUS COLORS & IOT EQUIPMENT TAXONOMY */}
       {activeTab === 'colors-taxonomy' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>

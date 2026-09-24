@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  serverExternalPackages: ['@tensorflow/tfjs-node', '@mapbox/node-pre-gyp'],
 };
 
 export default nextConfig;
